@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Coeus NFC App - Sigil</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings:
+            'FILL' 0,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24
+        }
+    </style>
+<script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#D0BCFF",
+              "background-light": "#FFFBFE",
+              "background-dark": "#1C1B1F",
+              "surface-light": "#FFFBFE",
+              "surface-dark": "#1C1B1F",
+              "surface-container-high-light": "#ECE6F0",
+              "surface-container-high-dark": "#2B2930",
+              "surface-container-light": "#F3EDF7",
+              "surface-container-dark": "#211F26",
+              "on-surface-light": "#1C1B1F",
+              "on-surface-dark": "#E6E1E5",
+              "on-surface-variant-light": "#49454F",
+              "on-surface-variant-dark": "#CAC4D0",
+              "primary-container-light": "#EADDFF",
+              "on-primary-container-light": "#21005D",
+              "primary-container-dark": "#4F378B",
+              "on-primary-container-dark": "#EADDFF",
+              "secondary-container-light": "#E8DEF8",
+              "on-secondary-container-light": "#1D192B",
+              "secondary-container-dark": "#4A4458",
+              "on-secondary-container-dark": "#E8DEF8",
+              "outline-light": "#79747E",
+              "outline-dark": "#938F99",
+              "outline-variant-dark": "#49454F",},
+            fontFamily: {
+              display: ["Roboto", "sans-serif"],
+            },
+            borderRadius: {
+              DEFAULT: "12px",
+              "lg": "16px",
+              "xl": "28px",
+              "full": "9999px",
+            },
+          },
+        },
+      };
+    </script>
+<style>
+      body {
+        min-height: max(884px, 100dvh);
+      }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark antialiased">
+<div class="relative h-screen w-full mx-auto max-w-[420px] overflow-hidden bg-surface-light dark:bg-surface-dark text-on-surface-light dark:text-on-surface-dark flex flex-col">
+<header class="p-4 flex items-center justify-between">
+<button class="w-12 h-12 flex items-center justify-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<div class="inline-block relative">
+<h1 class="text-xl text-center">Sigil</h1>
+<div class="absolute -bottom-2 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-primary rounded-full"></div>
+</div>
+<div class="w-12 h-12"></div>
+</header>
+<main class="px-4 pt-8 pb-6 flex-grow flex flex-col">
+<div class="flex w-full border border-outline-dark rounded-full p-1">
+<button class="flex-1 py-2 px-4 rounded-full bg-secondary-container-dark text-on-secondary-container-dark text-sm font-medium">Auto</button>
+<button class="flex-1 py-2 px-4 rounded-full text-on-surface-variant-dark text-sm font-medium">Custom</button>
+<button class="flex-1 py-2 px-4 rounded-full text-on-surface-variant-dark text-sm font-medium">Advanced</button>
+</div>
+<div class="flex-grow flex flex-col space-y-4 pt-8">
+<div class="relative flex-grow flex flex-col">
+<label class="absolute -top-2 left-3 px-1 text-xs text-on-surface-variant-dark bg-surface-dark" for="encrypt-input">Text to encrypt/decrypt</label>
+<textarea class="w-full flex-grow bg-transparent text-on-surface-dark rounded-lg p-4 resize-none border border-outline-variant-dark focus:ring-2 focus:ring-primary focus:border-primary" id="encrypt-input"></textarea>
+</div>
+<div class="relative">
+<label class="absolute -top-2 left-3 px-1 text-xs text-on-surface-variant-dark bg-surface-dark" for="password-input">Password</label>
+<input class="w-full h-14 px-4 bg-transparent text-on-surface-dark rounded-lg border border-outline-variant-dark focus:ring-2 focus:ring-primary focus:border-primary" id="password-input" type="password"/>
+</div>
+<div class="flex items-center space-x-2">
+<button class="flex-shrink-0 py-3 px-6 border border-outline-dark text-primary font-medium rounded-full">Logs</button>
+<div class="flex-grow flex items-center space-x-2">
+<button class="w-1/2 py-3 bg-primary text-on-primary-container-light font-medium rounded-full">Encrypt</button>
+<button class="w-1/2 py-3 bg-primary text-on-primary-container-light font-medium rounded-full">Decrypt</button>
+</div>
+</div>
+<div class="relative">
+<label class="absolute -top-2 left-3 px-1 text-xs text-on-surface-variant-dark bg-surface-dark" for="output-textarea">Output</label>
+<textarea class="w-full h-36 bg-transparent text-on-surface-variant-dark rounded-lg p-4 pr-12 resize-none border border-outline-variant-dark focus:ring-2 focus:ring-primary focus:border-primary" id="output-textarea" readonly=""></textarea>
+<button class="absolute top-2 right-2 p-2 text-on-surface-variant-dark hover:bg-white/10 rounded-full">
+<span class="material-symbols-outlined text-xl">content_copy</span>
+</button>
+</div>
+</div>
+</main>
+<div class="absolute inset-0 bg-black/30 z-10 hidden"></div>
+<div class="absolute top-0 left-0 h-full w-[360px] bg-surface-container-dark z-20 flex-col pt-6 rounded-r-lg hidden">
+<div class="px-3 pb-6">
+<h2 class="text-xl font-medium text-on-surface-dark pl-4">Coeus</h2>
+</div>
+<div class="flex-grow flex flex-col justify-between">
+<nav class="flex flex-col px-3">
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary-container-dark text-on-primary-container-dark" href="#">
+<span class="material-symbols-outlined !font-bold">description</span>
+<span class="text-sm font-bold">General</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant-dark hover:bg-primary/10" href="#">
+<span class="material-symbols-outlined">enhanced_encryption</span>
+<span class="text-sm font-medium">Encrypted</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant-dark hover:bg-primary/10" href="#">
+<span class="material-symbols-outlined">router</span>
+<span class="text-sm font-medium">Relay</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant-dark hover:bg-primary/10" href="#">
+<span class="material-symbols-outlined">terminal</span>
+<span class="text-sm font-medium">Command</span>
+</a>
+</nav>
+<nav class="flex flex-col px-3 pb-4">
+<div class="h-px bg-on-surface-variant-dark/20 mx-4 my-2"></div>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant-dark hover:bg-primary/10" href="#">
+<span class="material-symbols-outlined">volunteer_activism</span>
+<span class="text-sm font-medium">Donate</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant-dark hover:bg-primary/10" href="#">
+<span class="material-symbols-outlined">tune</span>
+<span class="text-sm font-medium">Config</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 rounded-xl text-on-surface-variant-dark hover:bg-primary/10" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+</div>
+</div>
+</body></html>
