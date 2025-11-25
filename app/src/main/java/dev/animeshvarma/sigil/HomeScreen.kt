@@ -5,6 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -12,15 +15,18 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties // Needed for resizing
 
 @Composable
 fun HomeScreen(viewModel: SigilViewModel = androidx.lifecycle.viewmodel.compose.viewModel(), modifier: Modifier = Modifier) {
@@ -109,7 +115,6 @@ fun HomeScreen(viewModel: SigilViewModel = androidx.lifecycle.viewmodel.compose.
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // [FIXED] Input Field - Bind to inputText, Editable, No Copy Button
             OutlinedTextField(
                 value = uiState.inputText,
                 onValueChange = { viewModel.onInputTextChanged(it) },
@@ -126,7 +131,6 @@ fun HomeScreen(viewModel: SigilViewModel = androidx.lifecycle.viewmodel.compose.
                 )
             )
 
-            // Password Input
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = { viewModel.onPasswordChanged(it) },
@@ -193,10 +197,9 @@ fun HomeScreen(viewModel: SigilViewModel = androidx.lifecycle.viewmodel.compose.
             }
 
             // --- 5. OUTPUT AREA ---
-            // [FIXED] Output Field - ReadOnly, Contains Copy Button
             OutlinedTextField(
                 value = uiState.outputText,
-                onValueChange = { }, // Read-only
+                onValueChange = { },
                 label = { Text("Output") },
                 readOnly = true,
                 modifier = Modifier
@@ -210,13 +213,12 @@ fun HomeScreen(viewModel: SigilViewModel = androidx.lifecycle.viewmodel.compose.
                     focusedBorderColor = MaterialTheme.colorScheme.primary,
                     unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
                 ),
-                // [FIXED] Trailing Icon ensures no layout conflict
                 trailingIcon = {
                     IconButton(
                         onClick = {
                             if (uiState.outputText.isNotEmpty()) {
                                 clipboardManager.setText(AnnotatedString(uiState.outputText))
-                                viewModel.addLog("✅ Copied to clipboard")
+                                viewModel.addLog("Copied to clipboard")
                             }
                         }
                     ) {
@@ -228,6 +230,123 @@ fun HomeScreen(viewModel: SigilViewModel = androidx.lifecycle.viewmodel.compose.
                     }
                 }
             )
+        }
+    }
+
+    if (uiState.showLogsDialog) {
+        LogsDialog(
+            logs = uiState.logs,
+            onDismiss = { viewModel.onLogsClicked() },
+            onClear = { viewModel.clearLogs() },
+            onCopyLogs = {
+                val fullLog = uiState.logs.joinToString("\n")
+                clipboardManager.setText(AnnotatedString(fullLog))
+                viewModel.addLog("Full logs copied")
+            }
+        )
+    }
+}
+
+@Composable
+fun LogsDialog(
+    logs: List<String>,
+    onDismiss: () -> Unit,
+    onClear: () -> Unit,
+    onCopyLogs: () -> Unit
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(logs.size) {
+        if (logs.isNotEmpty()) {
+            listState.animateScrollToItem(logs.size - 1)
+        }
+    }
+
+    // FIX: usePlatformDefaultWidth = false to allow custom width
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+            modifier = Modifier
+                .fillMaxWidth(0.95f) // 95% width (Wider)
+                .fillMaxHeight(0.7f) // 70% height (Responsive Vertical)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Text(
+                    text = "Logs",
+                    fontSize = 24.sp,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                        .padding(8.dp)
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(logs) { log ->
+                            Text(
+                                text = log,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color(0xFFE0E0E0),
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
+                            )
+                        }
+                    }
+
+                    IconButton(
+                        onClick = onCopyLogs,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Copy Logs",
+                            tint = Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = onClear) {
+                        Text(
+                            text = "Clear Trace",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 14.sp
+                        )
+                    }
+
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            text = "Close",
+                            fontSize = 16.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
         }
     }
 }

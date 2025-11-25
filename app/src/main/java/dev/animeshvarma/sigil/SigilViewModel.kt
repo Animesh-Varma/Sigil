@@ -8,20 +8,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
-/**
- * Modes of operation for Sigil.
- * AUTO: Standard AES-GCM (Military Grade).
- * CUSTOM: User selects specific algorithms (e.g., Twofish).
- * ADVANCED: Layered encryption chains (Future Feature).
- */
 enum class SigilMode {
     AUTO, CUSTOM, ADVANCED
 }
 
-/**
- * Holds the entire state of the main screen.
- */
 data class UiState(
     val inputText: String = "",
     val password: String = "",
@@ -37,7 +31,8 @@ class SigilViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
 
-    // --- User Input Handlers ---
+    // Simple time formatter for logs
+    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     fun onInputTextChanged(newText: String) {
         _uiState.update { it.copy(inputText = newText) }
@@ -52,52 +47,45 @@ class SigilViewModel : ViewModel() {
     }
 
     fun onLogsClicked() {
-        // Toggle logs dialog visibility or add a marker log
         _uiState.update { it.copy(showLogsDialog = !it.showLogsDialog) }
-        addLog("Logs accessed by user")
     }
 
-    // --- Crypto Logic ---
     fun onEncrypt() {
         val currentState = _uiState.value
+
         if (currentState.password.isEmpty()) {
-            addLog("❌ Error: Password required")
+            addLog("Error: Encryption aborted. Password is required.")
             return
         }
 
         _uiState.update { it.copy(isLoading = true) }
+        addLog("Encryption process started.")
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // DEFINE THE CHAINS HERE
+                // FIXED: Auto Mode now uses a Triple Layer Chain
                 val chain = when (currentState.selectedMode) {
                     SigilMode.AUTO -> listOf(
-                        CryptoEngine.Algorithm.AES_GCM
-                    )
-                    SigilMode.CUSTOM -> listOf(
-                        CryptoEngine.Algorithm.TWOFISH_CBC
-                    )
-                    SigilMode.ADVANCED -> listOf(
+                        CryptoEngine.Algorithm.AES_GCM,
                         CryptoEngine.Algorithm.TWOFISH_CBC,
-                        CryptoEngine.Algorithm.AES_GCM
-                    ) // Real Multi-Layer Chaining!
+                        CryptoEngine.Algorithm.SERPENT_CBC
+                    )
+                    SigilMode.CUSTOM -> listOf(CryptoEngine.Algorithm.TWOFISH_CBC)
+                    SigilMode.ADVANCED -> listOf(CryptoEngine.Algorithm.AES_GCM)
                 }
-
-                addLog("🔒 Encrypting with chain: ${chain.joinToString(" -> ")}")
 
                 val encrypted = CryptoEngine.encrypt(
                     data = currentState.inputText,
                     password = currentState.password,
-                    algorithms = chain, // Pass the list
+                    algorithms = chain,
                     logCallback = { addLog(it) }
                 )
 
                 _uiState.update { it.copy(outputText = encrypted, isLoading = false) }
-                addLog("✅ Encryption Complete.")
 
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, outputText = "Error") }
-                addLog("❌ Error: ${e.message}")
+                addLog("Critical Error: ${e.message}")
                 e.printStackTrace()
             }
         }
@@ -106,22 +94,19 @@ class SigilViewModel : ViewModel() {
     fun onDecrypt() {
         val currentState = _uiState.value
         if (currentState.password.isEmpty()) {
-            addLog("❌ Error: Password required")
+            addLog("Error: Password required for decryption.")
             return
         }
         if (currentState.inputText.isEmpty()) {
-            addLog("⚠️ No text to decrypt")
+            addLog("Warning: No input text found.")
             return
         }
 
         _uiState.update { it.copy(isLoading = true) }
+        addLog("Decryption process started.")
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                addLog("🔓 analyzing header and decrypting...")
-
-                // NOTE: We don't pass an algorithm anymore.
-                // The decrypt function reads the header to find the chain automatically.
                 val decrypted = CryptoEngine.decrypt(
                     encryptedData = currentState.inputText,
                     password = currentState.password,
@@ -129,42 +114,30 @@ class SigilViewModel : ViewModel() {
                 )
 
                 _uiState.update { it.copy(outputText = decrypted, isLoading = false) }
-                addLog("✅ Decryption Successful.")
 
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false, outputText = "Decryption Failed") }
-                addLog("❌ Error: ${e.message}")
+                addLog("Error: ${e.message}")
             }
         }
     }
 
-
-    // --- Utilities ---
-
-    /**
-     * Helper to safely update logs in an atomic way.
-     * Thread-safe for calls from Background/IO threads.
-     */
+    // Public helper so UI can log "Copied" events
     fun addLog(message: String) {
+        val timestamp = timeFormat.format(Date())
+        val formattedLog = "[$timestamp] $message"
         _uiState.update {
-            // Keep only the last 50 logs to save memory
-            val newLogs = (it.logs + message).takeLast(50)
+            // New logs appended to bottom (Chronological)
+            val newLogs = (it.logs + formattedLog).takeLast(100)
             it.copy(logs = newLogs)
         }
     }
 
-    /**
-     * Security Feature: Wipes sensitive data from state.
-     * Call this when the app is backgrounded or closed.
-     */
+    fun clearLogs() {
+        _uiState.update { it.copy(logs = emptyList()) }
+    }
+
     fun clearSensitiveData() {
-        _uiState.update {
-            it.copy(
-                password = "",
-                inputText = "",
-                outputText = "",
-                logs = emptyList()
-            )
-        }
+        _uiState.update { it.copy(password = "", inputText = "", outputText = "", logs = emptyList()) }
     }
 }
