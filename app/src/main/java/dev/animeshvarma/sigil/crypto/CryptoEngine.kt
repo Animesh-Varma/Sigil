@@ -1,6 +1,5 @@
 package dev.animeshvarma.sigil.crypto
 
-import org.bouncycastle.crypto.digests.SHA256Digest
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator
 import org.bouncycastle.crypto.params.Argon2Parameters
 import org.bouncycastle.crypto.engines.AESEngine
@@ -16,231 +15,189 @@ import java.security.SecureRandom
 import java.util.Base64
 import java.lang.System.currentTimeMillis
 
-/**
- * CryptoEngine provides cryptographic operations using Bouncy Castle library.
- * Supports key derivation with Argon2id and encryption/decryption with AES-256 (GCM),
- * Twofish (CBC), and Serpent (CBC).
- */
 object CryptoEngine {
 
     private val secureRandom = SecureRandom()
 
-    /**
-     * Derives a key from a password using Argon2id algorithm.
-     */
-    fun deriveKey(
-        password: CharArray,
-        salt: ByteArray,
-        outputLength: Int = 32
-    ): ByteArray {
-        val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
-            .withVersion(Argon2Parameters.ARGON2_VERSION_13)
-            .withIterations(4)
-            .withMemoryPowOfTwo(16)  // 64 MB
-            .withParallelism(4)
-            .withSalt(salt)
-            .build()
-
-        val generator = Argon2BytesGenerator()
-        generator.init(params)
-
-        val result = ByteArray(outputLength)
-        generator.generateBytes(password, result, 0, outputLength)
-
-        return result
-    }
-
-    /**
-     * Encrypts data using the specified algorithm.
-     */
+    // --- ENCRYPTION CHAIN ---
     fun encrypt(
         data: String,
         password: String,
-        algorithm: Algorithm = Algorithm.AES_GCM,
+        // Default chain is just AES, but now supports [AES, TWOFISH], etc.
+        algorithms: List<Algorithm> = listOf(Algorithm.AES_GCM),
         logCallback: (String) -> Unit = {}
     ): String {
         val startTime = currentTimeMillis()
-        val passwordArray = password.toCharArray()
 
-        // Generate salt
+        // 1. Setup
+        val passwordArray = password.toCharArray()
+        val encoder = Base64.getEncoder()
+
+        // 2. Generate Master Salt
         val salt = ByteArray(16)
         secureRandom.nextBytes(salt)
-        logCallback("Generated 16-byte salt")
 
-        // Derive key
-        val deriveKeyStartTime = currentTimeMillis()
+        // 3. Derive Master Key (Argon2id)
         val key = deriveKey(passwordArray, salt)
-        val deriveKeyTime = currentTimeMillis() - deriveKeyStartTime
-        logCallback("Argon2id key generated in ${deriveKeyTime}ms")
+        logCallback("Argon2id Master Key derived")
 
-        // Generate IV
-        val iv = when (algorithm) {
-            Algorithm.AES_GCM -> ByteArray(12).apply { secureRandom.nextBytes(this) }
-            Algorithm.TWOFISH_CBC, Algorithm.SERPENT_CBC -> ByteArray(16).apply { secureRandom.nextBytes(this) }
-        }
-        logCallback("Generated ${iv.size}-byte IV for ${algorithm.name}")
+        // 4. Chain Processing
+        var currentData = data.toByteArray()
+        val ivList = mutableListOf<String>()
+        val algoIdList = algorithms.joinToString(",") { it.name }
 
-        // Encrypt
-        val cipherText = when (algorithm) {
-            Algorithm.AES_GCM -> encryptAES_GCM(data.toByteArray(), key, iv)
-            Algorithm.TWOFISH_CBC -> encryptTwofish_CBC(data.toByteArray(), key, iv)
-            Algorithm.SERPENT_CBC -> encryptSerpent_CBC(data.toByteArray(), key, iv)
+        logCallback("Starting Encryption Chain: $algoIdList")
+
+        algorithms.forEachIndexed { index, algo ->
+            // Generate IV for this specific layer
+            val ivSize = if (algo == Algorithm.AES_GCM) 12 else 16
+            val iv = ByteArray(ivSize).apply { secureRandom.nextBytes(this) }
+            ivList.add(encoder.encodeToString(iv))
+
+            // Encrypt this layer
+            currentData = when (algo) {
+                Algorithm.AES_GCM -> encryptAES_GCM(currentData, key, iv)
+                Algorithm.TWOFISH_CBC -> encryptTwofish_CBC(currentData, key, iv)
+                Algorithm.SERPENT_CBC -> encryptSerpent_CBC(currentData, key, iv)
+            }
+            logCallback("Layer ${index + 1} (${algo.name}) finished")
         }
 
         clearCharArray(passwordArray)
 
-        val totalEncryptionTime = currentTimeMillis() - startTime
-        logCallback("${algorithm.name} encryption completed in ${totalEncryptionTime}ms")
-
-        // Format output
-        val encoder = Base64.getEncoder().withoutPadding()
+        // 5. Pack the Output
+        // Format: SALT : ALGO_LIST : IV_LIST : CIPHERTEXT
         val saltB64 = encoder.encodeToString(salt)
-        val ivB64 = encoder.encodeToString(iv)
-        val cipherB64 = encoder.encodeToString(cipherText)
+        val ivsString = ivList.joinToString(",")
+        val cipherB64 = encoder.encodeToString(currentData)
 
-        return "$saltB64:$ivB64:$cipherB64"
+        logCallback("Encryption finished in ${currentTimeMillis() - startTime}ms")
+
+        return "$saltB64:$algoIdList:$ivsString:$cipherB64"
     }
 
-    /**
-     * Decrypts data using the specified algorithm.
-     */
+    // --- DECRYPTION CHAIN ---
     fun decrypt(
         encryptedData: String,
         password: String,
-        algorithm: Algorithm = Algorithm.AES_GCM,
         logCallback: (String) -> Unit = {}
     ): String {
+        // 1. Parse the "Onion" Header
         val parts = encryptedData.split(":")
-        if (parts.size != 3) {
-            throw IllegalArgumentException("Invalid encrypted data format.")
+        if (parts.size != 4) {
+            throw IllegalArgumentException("Invalid Sigil format. Expected 4 parts, got ${parts.size}")
         }
 
         val decoder = Base64.getDecoder()
         val salt = decoder.decode(parts[0])
-        val iv = decoder.decode(parts[1])
-        val cipherText = decoder.decode(parts[2])
+        val algoNames = parts[1].split(",")
+        val ivStrings = parts[2].split(",")
+        val rawCipher = decoder.decode(parts[3])
 
-        val startTime = currentTimeMillis()
+        if (algoNames.size != ivStrings.size) {
+            throw IllegalArgumentException("Tampered Data: Algo/IV count mismatch")
+        }
+
+        // 2. Derive Master Key
         val passwordArray = password.toCharArray()
-
-        logCallback("Parsed encrypted data format")
-
-        // Derive key
-        val deriveKeyStartTime = currentTimeMillis()
         val key = deriveKey(passwordArray, salt)
-        val deriveKeyTime = currentTimeMillis() - deriveKeyStartTime
-        logCallback("Argon2id key generated in ${deriveKeyTime}ms")
+        logCallback("Master Key derived. Peeling ${algoNames.size} layers...")
 
-        // Decrypt
-        val decryptedData = when (algorithm) {
-            Algorithm.AES_GCM -> decryptAES_GCM(cipherText, key, iv)
-            Algorithm.TWOFISH_CBC -> decryptTwofish_CBC(cipherText, key, iv)
-            Algorithm.SERPENT_CBC -> decryptSerpent_CBC(cipherText, key, iv)
+        // 3. Reverse Chain Processing (Peeling the Onion)
+        var currentData = rawCipher
+
+        // We must loop BACKWARDS (Last layer applied is first to be removed)
+        for (i in algoNames.indices.reversed()) {
+            val algoName = algoNames[i]
+            val iv = decoder.decode(ivStrings[i])
+            val algorithm = Algorithm.valueOf(algoName)
+
+            currentData = when (algorithm) {
+                Algorithm.AES_GCM -> decryptAES_GCM(currentData, key, iv)
+                Algorithm.TWOFISH_CBC -> decryptTwofish_CBC(currentData, key, iv)
+                Algorithm.SERPENT_CBC -> decryptSerpent_CBC(currentData, key, iv)
+            }
+            logCallback("Layer ${i + 1} ($algoName) decrypted")
         }
 
         clearCharArray(passwordArray)
-
-        val totalDecryptionTime = currentTimeMillis() - startTime
-        logCallback("${algorithm.name} decryption completed in ${totalDecryptionTime}ms")
-
-        return String(decryptedData)
+        return String(currentData)
     }
 
-    // --- IMPLEMENTATIONS (Using .newInstance() to fix Deprecation Warnings) ---
+    // --- CORE PRIMITIVES (Keep these as they were) ---
+
+    fun deriveKey(password: CharArray, salt: ByteArray, outputLength: Int = 32): ByteArray {
+        val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id)
+            .withVersion(Argon2Parameters.ARGON2_VERSION_13)
+            .withIterations(4)
+            .withMemoryPowOfTwo(16)
+            .withParallelism(4)
+            .withSalt(salt)
+            .build()
+        val generator = Argon2BytesGenerator()
+        generator.init(params)
+        val result = ByteArray(outputLength)
+        generator.generateBytes(password, result, 0, outputLength)
+        return result
+    }
 
     private fun encryptAES_GCM(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        // FIXED: Use factory method
         val cipher = GCMBlockCipher.newInstance(AESEngine.newInstance())
-        val parameters = ParametersWithIV(KeyParameter(key), iv)
-
-        cipher.init(true, parameters)
-
+        cipher.init(true, ParametersWithIV(KeyParameter(key), iv))
         val output = ByteArray(cipher.getOutputSize(data.size))
-        val processLen = cipher.processBytes(data, 0, data.size, output, 0)
-        val finalLen = cipher.doFinal(output, processLen)
-
-        return output.sliceArray(0 until processLen + finalLen)
+        val len = cipher.processBytes(data, 0, data.size, output, 0)
+        cipher.doFinal(output, len)
+        return output
     }
 
     private fun decryptAES_GCM(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        // FIXED: Use factory method
         val cipher = GCMBlockCipher.newInstance(AESEngine.newInstance())
-        val parameters = ParametersWithIV(KeyParameter(key), iv)
-
-        cipher.init(false, parameters)
-
+        cipher.init(false, ParametersWithIV(KeyParameter(key), iv))
         val output = ByteArray(cipher.getOutputSize(data.size))
-        val processLen = cipher.processBytes(data, 0, data.size, output, 0)
-        val finalLen = cipher.doFinal(output, processLen)
-
-        return output.sliceArray(0 until processLen + finalLen)
+        val len = cipher.processBytes(data, 0, data.size, output, 0)
+        cipher.doFinal(output, len)
+        return output
     }
 
     private fun encryptTwofish_CBC(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        // FIXED: Use factory method
         val cipher = PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(TwofishEngine()), PKCS7Padding())
-        val parameters = ParametersWithIV(KeyParameter(key), iv)
-
-        cipher.init(true, parameters)
-
+        cipher.init(true, ParametersWithIV(KeyParameter(key), iv))
         val output = ByteArray(cipher.getOutputSize(data.size))
-        val processLen = cipher.processBytes(data, 0, data.size, output, 0)
-        val finalLen = cipher.doFinal(output, processLen)
-
-        return output.sliceArray(0 until processLen + finalLen)
+        val len = cipher.processBytes(data, 0, data.size, output, 0)
+        cipher.doFinal(output, len)
+        return output
     }
 
     private fun decryptTwofish_CBC(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        // FIXED: Use factory method
         val cipher = PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(TwofishEngine()), PKCS7Padding())
-        val parameters = ParametersWithIV(KeyParameter(key), iv)
-
-        cipher.init(false, parameters)
-
+        cipher.init(false, ParametersWithIV(KeyParameter(key), iv))
         val output = ByteArray(cipher.getOutputSize(data.size))
-        val processLen = cipher.processBytes(data, 0, data.size, output, 0)
-        val finalLen = cipher.doFinal(output, processLen)
-
-        return output.sliceArray(0 until processLen + finalLen)
+        val len = cipher.processBytes(data, 0, data.size, output, 0)
+        cipher.doFinal(output, len)
+        return output
     }
 
     private fun encryptSerpent_CBC(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        // FIXED: Use factory method
         val cipher = PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(SerpentEngine()), PKCS7Padding())
-        val parameters = ParametersWithIV(KeyParameter(key), iv)
-
-        cipher.init(true, parameters)
-
+        cipher.init(true, ParametersWithIV(KeyParameter(key), iv))
         val output = ByteArray(cipher.getOutputSize(data.size))
-        val processLen = cipher.processBytes(data, 0, data.size, output, 0)
-        val finalLen = cipher.doFinal(output, processLen)
-
-        return output.sliceArray(0 until processLen + finalLen)
+        val len = cipher.processBytes(data, 0, data.size, output, 0)
+        cipher.doFinal(output, len)
+        return output
     }
 
     private fun decryptSerpent_CBC(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        // FIXED: Use factory method
         val cipher = PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(SerpentEngine()), PKCS7Padding())
-        val parameters = ParametersWithIV(KeyParameter(key), iv)
-
-        cipher.init(false, parameters)
-
+        cipher.init(false, ParametersWithIV(KeyParameter(key), iv))
         val output = ByteArray(cipher.getOutputSize(data.size))
-        val processLen = cipher.processBytes(data, 0, data.size, output, 0)
-        val finalLen = cipher.doFinal(output, processLen)
-
-        return output.sliceArray(0 until processLen + finalLen)
+        val len = cipher.processBytes(data, 0, data.size, output, 0)
+        cipher.doFinal(output, len)
+        return output
     }
 
     private fun clearCharArray(array: CharArray) {
-        for (i in array.indices) {
-            array[i] = '\u0000'
-        }
+        for (i in array.indices) array[i] = '\u0000'
     }
 
-    enum class Algorithm {
-        AES_GCM,
-        TWOFISH_CBC,
-        SERPENT_CBC
-    }
+    enum class Algorithm { AES_GCM, TWOFISH_CBC, SERPENT_CBC }
 }
