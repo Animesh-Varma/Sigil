@@ -62,12 +62,19 @@ class SigilViewModel : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
+                // Determine Chain
                 val chain = when (currentState.selectedMode) {
-                    SigilMode.AUTO -> listOf(
-                        CryptoEngine.Algorithm.AES_GCM,
-                        CryptoEngine.Algorithm.TWOFISH_CBC,
-                        CryptoEngine.Algorithm.SERPENT_CBC
-                    )
+                    SigilMode.AUTO -> {
+                        // Randomize the order of the 3 algorithms
+                        val randomChain = listOf(
+                            CryptoEngine.Algorithm.AES_GCM,
+                            CryptoEngine.Algorithm.TWOFISH_CBC,
+                            CryptoEngine.Algorithm.SERPENT_CBC
+                        ).shuffled()
+
+                        addLog("Auto Mode: Randomized layer sequence.")
+                        randomChain
+                    }
                     SigilMode.CUSTOM -> listOf(CryptoEngine.Algorithm.TWOFISH_CBC)
                     SigilMode.ADVANCED -> listOf(CryptoEngine.Algorithm.AES_GCM)
                 }
