@@ -31,7 +31,6 @@ class SigilViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
 
-    // Simple time formatter for logs
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     fun onInputTextChanged(newText: String) {
@@ -63,7 +62,6 @@ class SigilViewModel : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                // FIXED: Auto Mode now uses a Triple Layer Chain
                 val chain = when (currentState.selectedMode) {
                     SigilMode.AUTO -> listOf(
                         CryptoEngine.Algorithm.AES_GCM,
@@ -122,12 +120,10 @@ class SigilViewModel : ViewModel() {
         }
     }
 
-    // Public helper so UI can log "Copied" events
     fun addLog(message: String) {
         val timestamp = timeFormat.format(Date())
         val formattedLog = "[$timestamp] $message"
         _uiState.update {
-            // New logs appended to bottom (Chronological)
             val newLogs = (it.logs + formattedLog).takeLast(100)
             it.copy(logs = newLogs)
         }
