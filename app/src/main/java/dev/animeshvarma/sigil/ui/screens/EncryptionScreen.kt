@@ -15,20 +15,17 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.animeshvarma.sigil.SigilViewModel
-import dev.animeshvarma.sigil.UiState
+import dev.animeshvarma.sigil.model.UiState
 
 @Composable
 fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
     val clipboardManager = LocalClipboardManager.current
+    val spacing = 18.dp
 
-    val standardSpacing = 12.dp
-
-    Column(
-        modifier = Modifier.fillMaxHeight()
-    ) {
-        // 1. Input Field
+    Column(modifier = Modifier.fillMaxHeight()) {
+        // 1. Input Field (Auto State)
         OutlinedTextField(
-            value = uiState.inputText,
+            value = uiState.autoInput,
             onValueChange = { viewModel.onInputTextChanged(it) },
             label = { Text("Text to encrypt/decrypt") },
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -41,11 +38,11 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
             )
         )
 
-        Spacer(modifier = Modifier.height(6.dp))
+        Spacer(modifier = Modifier.height(11.dp))
 
-        // 2. Password Field
+        // 2. Password Field (Auto State)
         OutlinedTextField(
-            value = uiState.password,
+            value = uiState.autoPassword,
             onValueChange = { viewModel.onPasswordChanged(it) },
             label = { Text("Password") },
             modifier = Modifier.fillMaxWidth().height(64.dp),
@@ -59,7 +56,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
             )
         )
 
-        Spacer(modifier = Modifier.height(standardSpacing))
+        Spacer(modifier = Modifier.height(spacing))
 
         // 3. Action Buttons
         Row(
@@ -75,42 +72,29 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                 Text("Logs", color = MaterialTheme.colorScheme.primary)
             }
 
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { viewModel.onEncrypt() },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Text("Encrypt")
-                }
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
+                ) { Text("Encrypt") }
 
                 Button(
                     onClick = { viewModel.onDecrypt() },
                     modifier = Modifier.weight(1f).height(48.dp),
                     shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                    )
-                ) {
-                    Text("Decrypt")
-                }
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
+                ) { Text("Decrypt") }
             }
         }
 
         // This compensates for the visual top padding of the Output TextField label.
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // 4. Output Field
+        // 4. Output Field (Auto State)
         OutlinedTextField(
-            value = uiState.outputText,
+            value = uiState.autoOutput,
             onValueChange = { },
             label = { Text("Output") },
             readOnly = true,
@@ -123,24 +107,16 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             ),
             trailingIcon = {
-                IconButton(
-                    onClick = {
-                        if (uiState.outputText.isNotEmpty()) {
-                            clipboardManager.setText(AnnotatedString(uiState.outputText))
-                            viewModel.addLog("Copied to clipboard")
-                        }
+                IconButton(onClick = {
+                    if (uiState.autoOutput.isNotEmpty()) {
+                        clipboardManager.setText(AnnotatedString(uiState.autoOutput))
+                        viewModel.addLog("Copied to clipboard")
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "Copy Output",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                }) {
+                    Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         )
-
-        // 5. Bottom Spacer
         Spacer(modifier = Modifier.height(8.dp))
     }
 }

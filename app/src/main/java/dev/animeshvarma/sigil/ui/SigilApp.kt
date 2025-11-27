@@ -13,20 +13,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalClipboardManager
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
-import dev.animeshvarma.sigil.UiState
 import dev.animeshvarma.sigil.model.AppScreen
 import dev.animeshvarma.sigil.model.SigilMode
+import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.ui.components.LogsDialog
 import dev.animeshvarma.sigil.ui.components.SigilDrawerContent
 import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.screens.DocsScreen
 import dev.animeshvarma.sigil.ui.screens.EncryptionInterface
+import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen // [FIX] Added Import
 import kotlinx.coroutines.launch
 
 @Composable
@@ -37,9 +36,6 @@ fun SigilApp(
     val uiState by viewModel.uiState.collectAsState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-
-    // [FIX 1] Initialize Clipboard Manager here
-    val clipboardManager = LocalClipboardManager.current
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -110,17 +106,26 @@ fun SigilApp(
             }
         }
 
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(enabled = false) {}, // Block touches
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+
         if (uiState.showLogsDialog) {
             LogsDialog(
                 logs = uiState.logs,
                 onDismiss = { viewModel.onLogsClicked() },
                 onClear = { viewModel.clearLogs() },
-                // [FIX 2] Implement Copy Logic using the clipboardManager
-                onCopyLogs = {
-                    val fullLog = uiState.logs.joinToString("\n")
-                    clipboardManager.setText(AnnotatedString(fullLog))
-                    viewModel.addLog("Full logs copied")
-                }
+                onCopyLogs = { /* Handled in UI */ }
             )
         }
     }
@@ -134,6 +139,8 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
             .fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+
+        // Tab Selector
         Row(
             modifier = Modifier
                 .fillMaxWidth(0.7f)
@@ -169,7 +176,7 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
             if (uiState.selectedMode == SigilMode.AUTO) {
                 EncryptionInterface(viewModel, uiState)
             } else {
-                UnderConstructionView()
+                CustomEncryptionScreen(viewModel, uiState) // [FIX] This should work now
             }
         }
     }
