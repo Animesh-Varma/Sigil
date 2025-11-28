@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,14 +17,17 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DragIndicator
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale // Added standard import
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -33,24 +37,25 @@ import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.crypto.CryptoEngine
 import dev.animeshvarma.sigil.model.AlgorithmRegistry
+import dev.animeshvarma.sigil.ui.theme.bounceClick
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
-    val clipboardManager = LocalClipboardManager.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     var showAddLayerSheet by remember { mutableStateOf(false) }
 
+    // Spacing
     val spaceBetweenTopSections = 16.dp
     val spaceLayersToInput = 10.dp
     val spaceInputToPass = 10.dp
-    val spacePassToButtons = 16.dp
+    val spacePassToButtons = 17.dp
     val spaceButtonsToOutput = 8.dp
 
-    Column(
-        modifier = Modifier.fillMaxHeight()
-        // Removed verticalArrangement to use manual spacers below
-    ) {
-        // --- COMPRESSION TOGGLE ---
+    Column(modifier = Modifier.fillMaxHeight()) {
+
+        // --- COMPRESSION ---
+        Spacer(modifier = Modifier.height(7.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -109,9 +114,11 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 itemsIndexed(uiState.customLayers) { index, algo ->
-                    LayerItem(
+                    DraggableLayerItem(
                         index = index,
                         name = algo.name.replace("_", "-"),
+                        onMoveUp = { viewModel.moveLayer(index, index - 1) },
+                        onMoveDown = { viewModel.moveLayer(index, index + 1) },
                         onDelete = { viewModel.removeLayer(index) }
                     )
                 }
@@ -134,10 +141,8 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
         OutlinedTextField(
             value = uiState.customInput,
             onValueChange = { viewModel.onInputTextChanged(it) },
-            label = { Text("Input Text") },
-            modifier = Modifier
-                .weight(1f) // Takes all available space
-                .fillMaxWidth(),
+            label = { Text("Text to encrypt/decrypt") },
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = Color.Transparent,
@@ -149,7 +154,6 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(spaceInputToPass))
 
-        // Password
         OutlinedTextField(
             value = uiState.customPassword,
             onValueChange = { viewModel.onPasswordChanged(it) },
@@ -181,19 +185,16 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                 Text("Logs", color = MaterialTheme.colorScheme.primary)
             }
 
-            Row(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
+            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { viewModel.onEncrypt() },
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).height(48.dp).bounceClick(),
                     shape = CircleShape
                 ) { Text("Encrypt") }
 
                 Button(
                     onClick = { viewModel.onDecrypt() },
-                    modifier = Modifier.weight(1f).height(48.dp),
+                    modifier = Modifier.weight(1f).height(48.dp).bounceClick(),
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
                 ) { Text("Decrypt") }
@@ -219,7 +220,10 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
             trailingIcon = {
                 IconButton(onClick = {
                     if (uiState.customOutput.isNotEmpty()) {
-                        clipboardManager.setText(AnnotatedString(uiState.customOutput))
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("Sigil Output", uiState.customOutput)
+                        clipboard.setPrimaryClip(clip)
+
                         viewModel.addLog("Copied to clipboard")
                     }
                 }) {
@@ -228,10 +232,9 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
             }
         )
 
-        Spacer(modifier = Modifier.height(8.dp)) // Bottom edge safety
+        Spacer(modifier = Modifier.height(8.dp))
     }
 
-    // --- BOTTOM SHEET ---
     if (showAddLayerSheet) {
         ModalBottomSheet(onDismissRequest = { showAddLayerSheet = false }) {
             AddLayerSheetContent(
@@ -244,9 +247,21 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     }
 }
 
-// ... LayerItem and AddLayerSheetContent (Unchanged) ...
+// [NEW] Draggable Layer Item
 @Composable
-fun LayerItem(index: Int, name: String, onDelete: () -> Unit) {
+fun DraggableLayerItem(
+    index: Int,
+    name: String,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onDelete: () -> Unit
+) {
+    // Basic drag detection state
+    var verticalDragOffset by remember { mutableFloatStateOf(0f) }
+
+    // Threshold to trigger a move (roughly the height of an item + padding)
+    val dragThreshold = 50f
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -259,14 +274,44 @@ fun LayerItem(index: Int, name: String, onDelete: () -> Unit) {
         Column {
             Text("Layer ${index + 1}: $name", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
         }
-        Row {
-            Icon(Icons.Default.DragIndicator, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Drag Handle with Gesture Detector
             Icon(
-                Icons.Default.Delete,
-                "Delete",
+                imageVector = Icons.Default.DragIndicator,
+                contentDescription = "Drag to reorder",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp).clickable { onDelete() }
+                modifier = Modifier
+                    .size(24.dp)
+                    .pointerInput(Unit) {
+                        detectDragGestures(
+                            onDragEnd = { verticalDragOffset = 0f },
+                            onDragCancel = { verticalDragOffset = 0f }
+                        ) { change, dragAmount ->
+                            change.consume()
+                            verticalDragOffset += dragAmount.y
+
+                            // Simple threshold-based swapping
+                            if (verticalDragOffset < -dragThreshold) {
+                                onMoveUp()
+                                verticalDragOffset = 0f // Reset after trigger
+                            } else if (verticalDragOffset > dragThreshold) {
+                                onMoveDown()
+                                verticalDragOffset = 0f
+                            }
+                        }
+                    }
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "Delete",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant, // Muted color per design
+                modifier = Modifier
+                    .size(20.dp)
+                    .clickable { onDelete() }
             )
         }
     }
@@ -275,7 +320,9 @@ fun LayerItem(index: Int, name: String, onDelete: () -> Unit) {
 @Composable
 fun AddLayerSheetContent(onSelect: (CryptoEngine.Algorithm) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
+    var searchDescription by remember { mutableStateOf(false) }
     val allAlgos = AlgorithmRegistry.supportedAlgorithms
+    val focusManager = LocalFocusManager.current
 
     Column(modifier = Modifier.padding(16.dp)) {
         Text("Add Encryption Layer", fontSize = 20.sp, fontWeight = FontWeight.Bold)
@@ -286,21 +333,52 @@ fun AddLayerSheetContent(onSelect: (CryptoEngine.Algorithm) -> Unit) {
             onValueChange = { searchQuery = it },
             placeholder = { Text("Search algorithms...") },
             leadingIcon = { Icon(Icons.Default.Search, null) },
+            trailingIcon = {
+                IconButton(onClick = { focusManager.clearFocus() }) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, "Done")
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
-            shape = CircleShape
+            shape = CircleShape,
+            singleLine = true
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp)
+                .clickable { searchDescription = !searchDescription }
+        ) {
+            Switch(
+                checked = searchDescription,
+                onCheckedChange = { searchDescription = it },
+                modifier = Modifier.scale(0.7f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                "Include description in search",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
 
         LazyColumn {
-            val filtered = allAlgos.filter {
-                it.name.contains(searchQuery, ignoreCase = true) || it.description.contains(searchQuery, ignoreCase = true)
+            val filtered = allAlgos.filter { algo ->
+                val nameMatch = algo.name.contains(searchQuery, ignoreCase = true)
+                if (searchDescription) {
+                    nameMatch || algo.description.contains(searchQuery, ignoreCase = true)
+                } else {
+                    nameMatch
+                }
             }
 
             items(filtered) { algoData ->
                 val engineEnum = CryptoEngine.Algorithm.valueOf(algoData.id)
                 ListItem(
-                    headlineContent = { Text(algoData.name) },
+                    headlineContent = { Text(algoData.name, fontWeight = FontWeight.SemiBold) },
                     supportingContent = { Text(algoData.description) },
                     modifier = Modifier.clickable { onSelect(engineEnum) }
                 )

@@ -1,8 +1,12 @@
 package dev.animeshvarma.sigil.ui
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -19,15 +23,15 @@ import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.AppScreen
 import dev.animeshvarma.sigil.model.SigilMode
-import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.ui.components.LogsDialog
 import dev.animeshvarma.sigil.ui.components.SigilDrawerContent
 import dev.animeshvarma.sigil.ui.components.UnderConstructionView
+import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen
 import dev.animeshvarma.sigil.ui.screens.DocsScreen
 import dev.animeshvarma.sigil.ui.screens.EncryptionInterface
-import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen // [FIX] Added Import
+import dev.animeshvarma.sigil.ui.theme.bounceClick
 import kotlinx.coroutines.launch
-
+import dev.animeshvarma.sigil.model.UiState
 @Composable
 fun SigilApp(
     modifier: Modifier = Modifier,
@@ -58,12 +62,12 @@ fun SigilApp(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, start = 16.dp, end = 16.dp),
+                    .padding(top = 1.dp, start = 16.dp, end = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 IconButton(
                     onClick = { scope.launch { drawerState.open() } },
-                    modifier = Modifier.align(Alignment.CenterStart)
+                    modifier = Modifier.align(Alignment.CenterStart).bounceClick()
                 ) {
                     Icon(
                         imageVector = Icons.Default.Menu,
@@ -96,27 +100,22 @@ fun SigilApp(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // --- CONTENT SWITCHER ---
+            // --- ANIMATED CONTENT SWITCHER ---
             Box(modifier = Modifier.weight(1f)) {
-                when (uiState.currentScreen) {
-                    AppScreen.HOME -> HomeContent(viewModel, uiState)
-                    AppScreen.DOCS -> DocsScreen()
-                    else -> UnderConstructionView()
+                AnimatedContent(
+                    targetState = uiState.currentScreen,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.95f) togetherWith
+                                fadeOut(animationSpec = tween(300))
+                    },
+                    label = "ScreenTransition"
+                ) { targetScreen ->
+                    when (targetScreen) {
+                        AppScreen.HOME -> HomeContent(viewModel, uiState)
+                        AppScreen.DOCS -> DocsScreen()
+                        else -> UnderConstructionView()
+                    }
                 }
-            }
-        }
-
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(enabled = false) {}, // Block touches
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(
-                    color = MaterialTheme.colorScheme.primary
-                )
             }
         }
 
@@ -125,7 +124,7 @@ fun SigilApp(
                 logs = uiState.logs,
                 onDismiss = { viewModel.onLogsClicked() },
                 onClear = { viewModel.clearLogs() },
-                onCopyLogs = { /* Handled in UI */ }
+                onCopyLogs = { }
             )
         }
     }
@@ -140,43 +139,92 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
 
-        // Tab Selector
-        Row(
+        // --- ANIMATED TAB SELECTOR ---
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.7f)
+                .fillMaxWidth(0.6f)
                 .height(36.dp)
                 .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                 .clip(CircleShape)
                 .padding(2.dp)
         ) {
-            SigilMode.entries.forEach { mode ->
-                val isSelected = uiState.selectedMode == mode
+            // Background Slider Logic
+            val align by animateDpAsState(
+                targetValue = if (uiState.selectedMode == SigilMode.AUTO) 0.dp else 100.dp, // Assuming 50% split visually, using Alignment is better but BoxWithConstraints is complex. Using Row weights approach below with animation.
+                label = "TabSlide"
+            )
+
+            Row(modifier = Modifier.fillMaxSize()) {
+                // AUTO TAB
                 Box(
-                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(CircleShape)
-                        .background(if (isSelected) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                        .clickable { viewModel.onModeSelected(mode) }
+                        .background(
+                            if (uiState.selectedMode == SigilMode.AUTO) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null // Remove ripple for custom feel
+                        ) { viewModel.onModeSelected(SigilMode.AUTO) },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = mode.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = "Auto",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (uiState.selectedMode == SigilMode.AUTO) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                // CUSTOM TAB
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(CircleShape)
+                        .background(
+                            if (uiState.selectedMode == SigilMode.CUSTOM) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { viewModel.onModeSelected(SigilMode.CUSTOM) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Custom",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = if (uiState.selectedMode == SigilMode.CUSTOM) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(15.dp))
 
+        // Content Crossfade
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.selectedMode == SigilMode.AUTO) {
-                EncryptionInterface(viewModel, uiState)
-            } else {
-                CustomEncryptionScreen(viewModel, uiState) // [FIX] This should work now
+            AnimatedContent(
+                targetState = uiState.selectedMode,
+                transitionSpec = {
+                    if (targetState == SigilMode.CUSTOM) {
+                        slideInHorizontally { width -> width } + fadeIn() togetherWith
+                                slideOutHorizontally { width -> -width } + fadeOut()
+                    } else {
+                        slideInHorizontally { width -> -width } + fadeIn() togetherWith
+                                slideOutHorizontally { width -> width } + fadeOut()
+                    }
+                },
+                label = "TabTransition"
+            ) { mode ->
+                if (mode == SigilMode.AUTO) {
+                    EncryptionInterface(viewModel, uiState)
+                } else {
+                    CustomEncryptionScreen(viewModel, uiState)
+                }
             }
         }
     }

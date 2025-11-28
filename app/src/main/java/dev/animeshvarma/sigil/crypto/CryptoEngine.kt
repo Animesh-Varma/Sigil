@@ -30,9 +30,9 @@ object CryptoEngine {
     private val decoder = Base64.getDecoder()
     private const val CS_DELIMITER = "::SIGIL_CS::"
 
-    // [NEW] Enum mapped to string IDs
     enum class Algorithm {
-        AES_GCM, AES_CBC, TWOFISH_CBC, SERPENT_CBC, CAMELLIA_CBC, CAST6_CBC
+        AES_GCM, AES_CBC, TWOFISH_CBC, SERPENT_CBC, CAMELLIA_CBC, CAST6_CBC,
+        RC6_CBC, BLOWFISH_CBC, IDEA_CBC, CAST5_CBC, SM4_CBC, GOST_CBC, SEED_CBC, TEA_CBC, XTEA_CBC
     }
 
     fun encrypt(
@@ -203,24 +203,34 @@ object CryptoEngine {
     private fun processCipher(encrypt: Boolean, algo: Algorithm, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         return when (algo) {
             Algorithm.AES_GCM -> if (encrypt) encryptAES_GCM(data, key, iv) else decryptAES_GCM(data, key, iv)
+            // Block Ciphers (CBC)
             Algorithm.AES_CBC -> processBlockCipher(encrypt, AESEngine.newInstance(), data, key, iv)
             Algorithm.TWOFISH_CBC -> processBlockCipher(encrypt, TwofishEngine(), data, key, iv)
             Algorithm.SERPENT_CBC -> processBlockCipher(encrypt, SerpentEngine(), data, key, iv)
             Algorithm.CAMELLIA_CBC -> processBlockCipher(encrypt, CamelliaEngine(), data, key, iv)
             Algorithm.CAST6_CBC -> processBlockCipher(encrypt, CAST6Engine(), data, key, iv)
+            Algorithm.RC6_CBC -> processBlockCipher(encrypt, RC6Engine(), data, key, iv)
+            Algorithm.BLOWFISH_CBC -> processBlockCipher(encrypt, BlowfishEngine(), data, key, iv)
+            Algorithm.IDEA_CBC -> processBlockCipher(encrypt, IDEAEngine(), data, key, iv)
+            Algorithm.CAST5_CBC -> processBlockCipher(encrypt, CAST5Engine(), data, key, iv)
+            Algorithm.SM4_CBC -> processBlockCipher(encrypt, SM4Engine(), data, key, iv)
+            Algorithm.GOST_CBC -> processBlockCipher(encrypt, GOST28147Engine(), data, key, iv)
+            Algorithm.SEED_CBC -> processBlockCipher(encrypt, SEEDEngine(), data, key, iv)
+            Algorithm.TEA_CBC -> processBlockCipher(encrypt, TEAEngine(), data, key, iv)
+            Algorithm.XTEA_CBC -> processBlockCipher(encrypt, XTEAEngine(), data, key, iv)
         }
     }
 
-    // --- PRIMITIVES (Refactored to be Generic for CBC) ---
+    // --- PRIMITIVES ---
     private fun processBlockCipher(encrypt: Boolean, engine: org.bouncycastle.crypto.BlockCipher, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         val cipher = PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(engine), PKCS7Padding())
+        // Adjust key length if necessary (some older ciphers like DES/Blowfish handle keys differently, but HKDF 32-bytes usually works or is truncated safely by BC)
         cipher.init(encrypt, ParametersWithIV(KeyParameter(key), iv))
         val out = ByteArray(cipher.getOutputSize(data.size))
         val l = cipher.processBytes(data, 0, data.size, out, 0)
         val f = cipher.doFinal(out, l)
         return out.copyOf(l + f)
     }
-
     private fun encryptAES_GCM(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         val c = GCMBlockCipher.newInstance(AESEngine.newInstance())
         c.init(true, ParametersWithIV(KeyParameter(key), iv))

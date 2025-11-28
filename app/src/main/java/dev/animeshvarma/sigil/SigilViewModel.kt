@@ -29,6 +29,15 @@ class SigilViewModel : ViewModel() {
         }
     }
 
+    fun moveLayer(fromIndex: Int, toIndex: Int) {
+        val list = _uiState.value.customLayers.toMutableList()
+        if (fromIndex in list.indices && toIndex in list.indices) {
+            val item = list.removeAt(fromIndex)
+            list.add(toIndex, item)
+            _uiState.update { it.copy(customLayers = list) }
+        }
+    }
+
     fun onPasswordChanged(newPassword: String) {
         _uiState.update {
             if (it.selectedMode == SigilMode.AUTO) it.copy(autoPassword = newPassword)

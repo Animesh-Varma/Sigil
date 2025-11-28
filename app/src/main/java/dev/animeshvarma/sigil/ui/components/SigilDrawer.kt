@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.model.AppScreen
+import dev.animeshvarma.sigil.ui.theme.bounceClick
 
 @Composable
 fun SigilDrawerContent(
@@ -148,6 +149,7 @@ fun DrawerItem(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
+            .bounceClick()
             .clickable(onClick = onClick),
         color = background
     ) {
