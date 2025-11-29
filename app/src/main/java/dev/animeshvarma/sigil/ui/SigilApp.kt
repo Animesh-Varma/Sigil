@@ -17,7 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.IntOffset // [FIX] Added missing import
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
@@ -30,6 +30,7 @@ import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen
 import dev.animeshvarma.sigil.ui.screens.DocsScreen
 import dev.animeshvarma.sigil.ui.screens.EncryptionInterface
+import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 import kotlinx.coroutines.launch
 
 @Composable
@@ -88,17 +89,18 @@ fun SigilApp(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
+                // Screen Transition Animation
                 Box(modifier = Modifier.weight(1f)) {
                     AnimatedContent(
                         targetState = uiState.currentScreen,
                         transitionSpec = {
-                            val springSpec = spring<Float>(
-                                stiffness = Spring.StiffnessMedium,
-                                dampingRatio = Spring.DampingRatioLowBouncy
+                            val screenSpring = spring<Float>(
+                                stiffness = AnimationConfig.STIFFNESS,
+                                dampingRatio = AnimationConfig.DAMPING
                             )
 
-                            fadeIn(animationSpec = springSpec) + scaleIn(initialScale = 0.92f, animationSpec = springSpec) togetherWith
-                                    fadeOut(animationSpec = springSpec)
+                            fadeIn(animationSpec = screenSpring) + scaleIn(initialScale = 0.95f, animationSpec = screenSpring) togetherWith
+                                    fadeOut(animationSpec = screenSpring)
                         },
                         label = "ScreenTransition"
                     ) { target ->
@@ -161,17 +163,18 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
             ) { Text("Custom") }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(18.dp))
 
         Box(modifier = Modifier.fillMaxSize()) {
+
+            val slideSpring = spring<IntOffset>(
+                stiffness = AnimationConfig.STIFFNESS,
+                dampingRatio = AnimationConfig.DAMPING
+            )
+
             AnimatedContent(
                 targetState = uiState.selectedMode,
                 transitionSpec = {
-                    val slideSpring = spring<IntOffset>(
-                        stiffness = Spring.StiffnessMedium,
-                        dampingRatio = Spring.DampingRatioLowBouncy
-                    )
-
                     if (targetState == SigilMode.CUSTOM) {
                         slideInHorizontally(animationSpec = slideSpring) { it } + fadeIn() togetherWith
                                 slideOutHorizontally(animationSpec = slideSpring) { -it } + fadeOut()

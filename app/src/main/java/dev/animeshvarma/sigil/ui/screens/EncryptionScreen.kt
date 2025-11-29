@@ -14,7 +14,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.UiState
-import dev.animeshvarma.sigil.ui.components.SigilButtonGroup // [FIX] Added
+import dev.animeshvarma.sigil.ui.components.SigilButtonGroup //  Added
 
 @Composable
 fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
@@ -56,7 +56,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(18.dp))
 
-        // 3. Button Group [FIXED]
+        // 3. Button Group
         SigilButtonGroup(
             onLogs = { viewModel.onLogsClicked() },
             onEncrypt = { viewModel.onEncrypt() },

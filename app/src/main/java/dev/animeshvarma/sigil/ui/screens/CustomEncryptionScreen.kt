@@ -260,7 +260,7 @@ fun AddLayerSheetContent(onSelect: (CryptoEngine.Algorithm) -> Unit) {
 
             items(filtered) { algoData ->
                 val engineEnum = CryptoEngine.Algorithm.valueOf(algoData.id)
-                // [FIX 3] Rounded Items in Search List
+                // Rounded Items in Search List
                 Surface(
                     modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)),
                     color = MaterialTheme.colorScheme.surfaceContainerLow
