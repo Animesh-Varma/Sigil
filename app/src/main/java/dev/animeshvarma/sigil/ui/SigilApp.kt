@@ -15,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
@@ -33,6 +34,7 @@ import dev.animeshvarma.sigil.ui.screens.EncryptionInterface
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SigilApp(
     modifier: Modifier = Modifier,
@@ -89,7 +91,7 @@ fun SigilApp(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // Screen Transition Animation
+                // CONTENT SWITCHER
                 Box(modifier = Modifier.weight(1f)) {
                     AnimatedContent(
                         targetState = uiState.currentScreen,
@@ -113,15 +115,18 @@ fun SigilApp(
                 }
             }
 
+            // The Expressive Shape-Shifting Loader
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
+                        .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.4f))
                         .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    LoadingIndicator(
+                        modifier = Modifier.scale(1.4f)
+                    )
                 }
             }
         }
@@ -166,7 +171,6 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
         Spacer(modifier = Modifier.height(15.dp))
 
         Box(modifier = Modifier.fillMaxSize()) {
-
             val slideSpring = spring<IntOffset>(
                 stiffness = AnimationConfig.STIFFNESS,
                 dampingRatio = AnimationConfig.DAMPING
