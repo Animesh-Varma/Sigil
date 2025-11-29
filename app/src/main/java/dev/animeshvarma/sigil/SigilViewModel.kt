@@ -29,6 +29,10 @@ class SigilViewModel : ViewModel() {
         }
     }
 
+    fun addLayers(algos: List<CryptoEngine.Algorithm>) {
+        _uiState.update { it.copy(customLayers = it.customLayers + algos) }
+    }
+
     fun moveLayer(fromIndex: Int, toIndex: Int) {
         val list = _uiState.value.customLayers.toMutableList()
         if (fromIndex in list.indices && toIndex in list.indices) {
@@ -70,6 +74,7 @@ class SigilViewModel : ViewModel() {
         _uiState.update { it.copy(logs = emptyList()) }
     }
 
+    /* IMP pending */
     fun clearSensitiveData() {
         _uiState.update {
             it.copy(
