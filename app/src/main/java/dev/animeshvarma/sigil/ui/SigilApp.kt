@@ -155,7 +155,7 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth(0.65f)) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth(0.65f).height(38.dp)) {
             SegmentedButton(
                 selected = uiState.selectedMode == SigilMode.AUTO,
                 onClick = { viewModel.onModeSelected(SigilMode.AUTO) },
