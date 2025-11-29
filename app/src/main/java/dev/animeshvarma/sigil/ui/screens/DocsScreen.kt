@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import dev.animeshvarma.sigil.ui.components.SigilSegmentedControl
 import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 
@@ -30,26 +31,16 @@ fun DocsScreen() {
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // [FIX] Material 3 Segmented Button (Same size/style as Home)
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier
-                .fillMaxWidth(0.65f)
-                .height(38.dp)
-        ) {
-            tabs.forEachIndexed { index, title ->
-                SegmentedButton(
-                    selected = selectedTabIndex == index,
-                    onClick = { selectedTabIndex = index },
-                    shape = SegmentedButtonDefaults.itemShape(index = index, count = tabs.size)
-                ) {
-                    Text(title)
-                }
-            }
-        }
+        SigilSegmentedControl(
+            items = tabs,
+            selectedIndex = selectedTabIndex,
+            onItemSelection = { selectedTabIndex = it }
+        )
 
         Spacer(modifier = Modifier.height(15.dp))
 
-        // [FIX] Animated Content with Spring Physics
+        Spacer(modifier = Modifier.height(15.dp))
+
         Box(modifier = Modifier.fillMaxSize()) {
             val slideSpring = spring<IntOffset>(
                 stiffness = AnimationConfig.STIFFNESS,

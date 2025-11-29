@@ -115,6 +115,31 @@ private fun RowScope.BounceablePill(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SigilSegmentedControl(
+    items: List<String>,
+    selectedIndex: Int,
+    onItemSelection: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    SingleChoiceSegmentedButtonRow(
+        modifier = modifier
+            .fillMaxWidth(0.65f) // Standardized Width
+            .height(38.dp)       // Standardized Height
+    ) {
+        items.forEachIndexed { index, label ->
+            SegmentedButton(
+                selected = index == selectedIndex,
+                onClick = { onItemSelection(index) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = items.size)
+            ) {
+                Text(label)
+            }
+        }
+    }
+}
+
 @Composable
 fun StyledLayerContainer(
     modifier: Modifier = Modifier,

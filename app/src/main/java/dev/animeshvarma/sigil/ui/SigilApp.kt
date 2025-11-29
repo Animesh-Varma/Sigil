@@ -27,6 +27,7 @@ import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.ui.components.LogsDialog
 import dev.animeshvarma.sigil.ui.components.SigilDrawerContent
+import dev.animeshvarma.sigil.ui.components.SigilSegmentedControl
 import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen
 import dev.animeshvarma.sigil.ui.screens.DocsScreen
@@ -155,18 +156,14 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth(0.65f).height(38.dp)) {
-            SegmentedButton(
-                selected = uiState.selectedMode == SigilMode.AUTO,
-                onClick = { viewModel.onModeSelected(SigilMode.AUTO) },
-                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) { Text("Auto") }
-            SegmentedButton(
-                selected = uiState.selectedMode == SigilMode.CUSTOM,
-                onClick = { viewModel.onModeSelected(SigilMode.CUSTOM) },
-                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) { Text("Custom") }
-        }
+        SigilSegmentedControl(
+            items = listOf("Auto", "Custom"),
+            selectedIndex = if (uiState.selectedMode == SigilMode.AUTO) 0 else 1,
+            onItemSelection = { index ->
+                val newMode = if (index == 0) SigilMode.AUTO else SigilMode.CUSTOM
+                viewModel.onModeSelected(newMode)
+            }
+        )
 
         Spacer(modifier = Modifier.height(15.dp))
 
