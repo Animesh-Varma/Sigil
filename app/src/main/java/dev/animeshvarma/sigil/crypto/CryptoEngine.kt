@@ -41,7 +41,7 @@ object CryptoEngine {
         return when (algo) {
             // 64-bit Block Ciphers (8 Bytes)
             Algorithm.BLOWFISH_CBC, Algorithm.IDEA_CBC, Algorithm.CAST5_CBC,
-            Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.GOST_CBC, Algorithm.RC6_CBC -> 8
+            Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.GOST_CBC -> 8
             // 128-bit Block Ciphers (16 Bytes)
             else -> 16
         }
