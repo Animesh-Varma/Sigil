@@ -35,17 +35,19 @@ object CryptoEngine {
         RC6_CBC, BLOWFISH_CBC, IDEA_CBC, CAST5_CBC, SM4_CBC, GOST_CBC, SEED_CBC, TEA_CBC, XTEA_CBC
     }
 
-    // --- CONFIGURATION HELPERS ---
+    // --- CONFIGURATION HELPERS  ---
+    // Returns the IV size (Block Size) for specific algorithms
     private fun getBlockSize(algo: Algorithm): Int {
         return when (algo) {
             // 64-bit Block Ciphers (8 Bytes)
             Algorithm.BLOWFISH_CBC, Algorithm.IDEA_CBC, Algorithm.CAST5_CBC,
-            Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.GOST_CBC -> 8
+            Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.GOST_CBC, Algorithm.RC6_CBC -> 8
             // 128-bit Block Ciphers (16 Bytes)
             else -> 16
         }
     }
 
+    // Returns the required Key Size
     private fun getKeySize(algo: Algorithm): Int {
         return when (algo) {
             // 128-bit Key Ciphers (16 Bytes)
@@ -90,21 +92,21 @@ object CryptoEngine {
         val ivList = mutableListOf<String>()
         val algoNames = algorithms.joinToString(",") { it.name }
 
-        logCallback("Chain: $algoNames")
+        logCallback("Chain Sequence: $algoNames")
 
         algorithms.forEachIndexed { index, algo ->
             val layerId = index + 1
 
-            // Use correct Block Size for IV
+            // [FIX] Use correct Block Size for IV
             val ivSize = if (algo == Algorithm.AES_GCM) 12 else getBlockSize(algo)
             val iv = ByteArray(ivSize).apply { secureRandom.nextBytes(this) }
             ivList.add(encoder.encodeToString(iv))
 
-            // Use correct Key Size
+            // [FIX] Use correct Key Size
             val keySize = getKeySize(algo)
             val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId", keySize)
 
-            logCallback("Layer $layerId: ${algo.name}")
+            logCallback("Layer $layerId: Encrypting with ${algo.name}...")
             currentBytes = processCipher(true, algo, currentBytes, layerKey, iv)
         }
 
@@ -132,7 +134,10 @@ object CryptoEngine {
         val finalBytes = ByteBuffer.allocate(packedBytes.size + hmac.size)
             .put(packedBytes).put(hmac).array()
 
-        logCallback("Complete in ${java.lang.System.currentTimeMillis() - startTime}ms.")
+        logCallback("Header encrypted & sealed.")
+        logCallback("Global HMAC Signature applied.")
+        logCallback("Operation complete in ${java.lang.System.currentTimeMillis() - startTime}ms.")
+
         return stripPadding(encoder.encodeToString(finalBytes))
     }
 
@@ -141,7 +146,7 @@ object CryptoEngine {
         password: String,
         logCallback: (String) -> Unit = {}
     ): String {
-        logCallback("Reading Container...")
+        logCallback("Reading Secure Container...")
         val cleanData = encryptedData.filter { !it.isWhitespace() }
 
         try {
@@ -160,12 +165,13 @@ object CryptoEngine {
 
             val sha512Password = hashPasswordSHA512(password)
             val rootSecret = deriveRootSecret(sha512Password, salt)
+            logCallback("Root Secret reconstructed.")
 
             val macKey = deriveSubKey(rootSecret, "SIGIL_GLOBAL_MAC", 32)
             if (!Arrays.equals(storedMac, calculateHMAC(payloadBytes, macKey))) {
                 throw IllegalArgumentException("HMAC Verification Failed.")
             }
-            logCallback("Integrity Verified.")
+            logCallback("Global HMAC Verified. Container is authentic.")
 
             // 2. Unpack
             val buffer = ByteBuffer.wrap(payloadBytes)
@@ -188,7 +194,7 @@ object CryptoEngine {
             val ivStrings = parts[1].split(",")
             val isCompressed = parts.getOrNull(2) == "C"
 
-            logCallback("Layers: ${parts[0]}")
+            logCallback("Layers detected: ${parts[0]}")
 
             // 4. Decrypt Chain
             var currentBytes = bodyBytes
@@ -197,10 +203,11 @@ object CryptoEngine {
                 val algo = Algorithm.valueOf(algoNames[i])
                 val iv = decoder.decode(ivStrings[i])
 
+                // [FIX] Derive correct key size
                 val keySize = getKeySize(algo)
                 val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId", keySize)
 
-                logCallback("Layer $layerId: Decrypting ${algo.name}...")
+                logCallback("Layer $layerId: Decrypting with ${algo.name}...")
                 currentBytes = processCipher(false, algo, currentBytes, layerKey, iv)
             }
 
@@ -215,9 +222,13 @@ object CryptoEngine {
             if (result.contains(CS_DELIMITER)) {
                 val plain = result.substringBeforeLast(CS_DELIMITER)
                 val sum = result.substringAfterLast(CS_DELIMITER)
-                if (sum == hashSHA256(plain)) return plain
+                if (sum == hashSHA256(plain)) {
+                    logCallback("Integrity Verified (Internal Checksum).")
+                    return plain
+                }
                 else return "ERROR: Checksum mismatch."
             }
+            logCallback("Legacy format (No checksum).")
             return result
 
         } catch (e: Exception) {
