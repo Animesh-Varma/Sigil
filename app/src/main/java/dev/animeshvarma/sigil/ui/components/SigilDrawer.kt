@@ -5,7 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Article // [FIX] Added this import
+import androidx.compose.material.icons.automirrored.filled.Article
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,7 +18,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.model.AppScreen
-import dev.animeshvarma.sigil.ui.theme.bounceClick
 
 @Composable
 fun SigilDrawerContent(
@@ -32,7 +31,6 @@ fun SigilDrawerContent(
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
         drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
     ) {
-        // Reduced vertical padding
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -103,7 +101,6 @@ fun SigilDrawerContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
         )
 
-        // Bottom section
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)) {
             DrawerItem(
                 label = "Donate",
@@ -113,7 +110,6 @@ fun SigilDrawerContent(
             )
             DrawerItem(
                 label = "Docs/Release Notes",
-                // [FIX] Changed from Icons.Default.Article to AutoMirrored
                 icon = Icons.AutoMirrored.Filled.Article,
                 isSelected = currentScreen == AppScreen.DOCS,
                 onClick = { onScreenSelected(AppScreen.DOCS) }
@@ -149,8 +145,7 @@ fun DrawerItem(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
-            .bounceClick()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick), // Removed bounceClick
         color = background
     ) {
         Row(

@@ -35,11 +35,32 @@ object CryptoEngine {
         RC6_CBC, BLOWFISH_CBC, IDEA_CBC, CAST5_CBC, SM4_CBC, GOST_CBC, SEED_CBC, TEA_CBC, XTEA_CBC
     }
 
+    // --- CONFIGURATION HELPERS ---
+    private fun getBlockSize(algo: Algorithm): Int {
+        return when (algo) {
+            // 64-bit Block Ciphers (8 Bytes)
+            Algorithm.BLOWFISH_CBC, Algorithm.IDEA_CBC, Algorithm.CAST5_CBC,
+            Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.GOST_CBC -> 8
+            // 128-bit Block Ciphers (16 Bytes)
+            else -> 16
+        }
+    }
+
+    private fun getKeySize(algo: Algorithm): Int {
+        return when (algo) {
+            // 128-bit Key Ciphers (16 Bytes)
+            Algorithm.SM4_CBC, Algorithm.SEED_CBC, Algorithm.CAST5_CBC,
+            Algorithm.IDEA_CBC, Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.BLOWFISH_CBC -> 16
+            // 256-bit Key Ciphers (32 Bytes)
+            else -> 32
+        }
+    }
+
     fun encrypt(
         data: String,
         password: String,
         algorithms: List<Algorithm> = listOf(Algorithm.AES_GCM),
-        compress: Boolean = true, // [NEW] Compression Toggle
+        compress: Boolean = true,
         logCallback: (String) -> Unit = {}
     ): String {
         val startTime = java.lang.System.currentTimeMillis()
@@ -54,7 +75,7 @@ object CryptoEngine {
         val rootSecret = deriveRootSecret(sha512Password, salt)
         logCallback("Root Secret derived.")
 
-        // 3. Prepare Payload (Checksum + Compression)
+        // 3. Prepare Payload
         val checksum = hashSHA256(data)
         val rawString = data + CS_DELIMITER + checksum
         var currentBytes = rawString.toByteArray(StandardCharsets.UTF_8)
@@ -62,7 +83,7 @@ object CryptoEngine {
         if (compress) {
             val originalSize = currentBytes.size
             currentBytes = compressData(currentBytes)
-            logCallback("Compression: $originalSize bytes -> ${currentBytes.size} bytes")
+            logCallback("Compression: $originalSize -> ${currentBytes.size} bytes")
         }
 
         // 4. Chain Encryption
@@ -73,19 +94,22 @@ object CryptoEngine {
 
         algorithms.forEachIndexed { index, algo ->
             val layerId = index + 1
-            // GCM needs 12 bytes, CBC needs 16 bytes (block size)
-            val ivSize = if (algo == Algorithm.AES_GCM) 12 else 16
+
+            // Use correct Block Size for IV
+            val ivSize = if (algo == Algorithm.AES_GCM) 12 else getBlockSize(algo)
             val iv = ByteArray(ivSize).apply { secureRandom.nextBytes(this) }
             ivList.add(encoder.encodeToString(iv))
 
-            val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId")
-            logCallback("Layer $layerId: ${algo.name}")
+            // Use correct Key Size
+            val keySize = getKeySize(algo)
+            val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId", keySize)
 
+            logCallback("Layer $layerId: ${algo.name}")
             currentBytes = processCipher(true, algo, currentBytes, layerKey, iv)
         }
 
-        // 5. Header (Now includes Compression Flag 'C')
-        val headerKey = deriveSubKey(rootSecret, "SIGIL_HEADER")
+        // 5. Header
+        val headerKey = deriveSubKey(rootSecret, "SIGIL_HEADER", 32)
         val flags = if (compress) "C" else "N"
         val metadataString = "$algoNames|${ivList.joinToString(",")}|$flags"
         val metadataBytes = metadataString.toByteArray(StandardCharsets.UTF_8)
@@ -102,7 +126,7 @@ object CryptoEngine {
         packBuffer.put(currentBytes)
         val packedBytes = packBuffer.array()
 
-        val macKey = deriveSubKey(rootSecret, "SIGIL_GLOBAL_MAC")
+        val macKey = deriveSubKey(rootSecret, "SIGIL_GLOBAL_MAC", 32)
         val hmac = calculateHMAC(packedBytes, macKey)
 
         val finalBytes = ByteBuffer.allocate(packedBytes.size + hmac.size)
@@ -137,7 +161,7 @@ object CryptoEngine {
             val sha512Password = hashPasswordSHA512(password)
             val rootSecret = deriveRootSecret(sha512Password, salt)
 
-            val macKey = deriveSubKey(rootSecret, "SIGIL_GLOBAL_MAC")
+            val macKey = deriveSubKey(rootSecret, "SIGIL_GLOBAL_MAC", 32)
             if (!Arrays.equals(storedMac, calculateHMAC(payloadBytes, macKey))) {
                 throw IllegalArgumentException("HMAC Verification Failed.")
             }
@@ -155,7 +179,7 @@ object CryptoEngine {
             buffer.get(bodyBytes)
 
             // 3. Header
-            val headerKey = deriveSubKey(rootSecret, "SIGIL_HEADER")
+            val headerKey = deriveSubKey(rootSecret, "SIGIL_HEADER", 32)
             val metaBytes = decryptAES_GCM(encryptedMeta, headerKey, headerIv)
             val metaString = String(metaBytes, StandardCharsets.UTF_8)
             val parts = metaString.split("|")
@@ -164,7 +188,7 @@ object CryptoEngine {
             val ivStrings = parts[1].split(",")
             val isCompressed = parts.getOrNull(2) == "C"
 
-            logCallback("Layers: ${parts[0]} | Compressed: $isCompressed")
+            logCallback("Layers: ${parts[0]}")
 
             // 4. Decrypt Chain
             var currentBytes = bodyBytes
@@ -172,7 +196,9 @@ object CryptoEngine {
                 val layerId = i + 1
                 val algo = Algorithm.valueOf(algoNames[i])
                 val iv = decoder.decode(ivStrings[i])
-                val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId")
+
+                val keySize = getKeySize(algo)
+                val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId", keySize)
 
                 logCallback("Layer $layerId: Decrypting ${algo.name}...")
                 currentBytes = processCipher(false, algo, currentBytes, layerKey, iv)
@@ -203,7 +229,7 @@ object CryptoEngine {
     private fun processCipher(encrypt: Boolean, algo: Algorithm, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         return when (algo) {
             Algorithm.AES_GCM -> if (encrypt) encryptAES_GCM(data, key, iv) else decryptAES_GCM(data, key, iv)
-            // Block Ciphers (CBC)
+            // Block Ciphers
             Algorithm.AES_CBC -> processBlockCipher(encrypt, AESEngine.newInstance(), data, key, iv)
             Algorithm.TWOFISH_CBC -> processBlockCipher(encrypt, TwofishEngine(), data, key, iv)
             Algorithm.SERPENT_CBC -> processBlockCipher(encrypt, SerpentEngine(), data, key, iv)
@@ -221,16 +247,15 @@ object CryptoEngine {
         }
     }
 
-    // --- PRIMITIVES ---
     private fun processBlockCipher(encrypt: Boolean, engine: org.bouncycastle.crypto.BlockCipher, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         val cipher = PaddedBufferedBlockCipher(CBCBlockCipher.newInstance(engine), PKCS7Padding())
-        // Adjust key length if necessary (some older ciphers like DES/Blowfish handle keys differently, but HKDF 32-bytes usually works or is truncated safely by BC)
         cipher.init(encrypt, ParametersWithIV(KeyParameter(key), iv))
         val out = ByteArray(cipher.getOutputSize(data.size))
         val l = cipher.processBytes(data, 0, data.size, out, 0)
         val f = cipher.doFinal(out, l)
         return out.copyOf(l + f)
     }
+
     private fun encryptAES_GCM(data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         val c = GCMBlockCipher.newInstance(AESEngine.newInstance())
         c.init(true, ParametersWithIV(KeyParameter(key), iv))
@@ -249,7 +274,6 @@ object CryptoEngine {
         return o.copyOf(l + f)
     }
 
-    // --- COMPRESSION ---
     private fun compressData(data: ByteArray): ByteArray {
         val deflater = Deflater(Deflater.BEST_COMPRESSION)
         deflater.setInput(data)
@@ -277,9 +301,6 @@ object CryptoEngine {
         return outputStream.toByteArray()
     }
 
-    // --- HELPERS (Keep existing hash/derive functions) ---
-    // (Pasting abbreviated versions for brevity, use previous implementations for hashSHA256, hashPasswordSHA512, deriveRootSecret, deriveSubKey, calculateHMAC, stripPadding, restorePadding)
-
     private fun stripPadding(input: String) = input.trimEnd('=')
     private fun restorePadding(input: String): String {
         val missing = input.length % 4
@@ -295,8 +316,8 @@ object CryptoEngine {
         val params = Argon2Parameters.Builder(Argon2Parameters.ARGON2_id).withVersion(Argon2Parameters.ARGON2_VERSION_13).withIterations(4).withMemoryPowOfTwo(16).withParallelism(4).withSalt(s).build()
         val g = Argon2BytesGenerator(); g.init(params); val r = ByteArray(32); g.generateBytes(p, r, 0, 32); return r
     }
-    private fun deriveSubKey(r: ByteArray, c: String): ByteArray {
-        val h = HKDFBytesGenerator(SHA512Digest()); h.init(HKDFParameters(r, null, c.toByteArray(StandardCharsets.UTF_8))); val k = ByteArray(32); h.generateBytes(k, 0, 32); return k
+    private fun deriveSubKey(r: ByteArray, c: String, length: Int): ByteArray {
+        val h = HKDFBytesGenerator(SHA512Digest()); h.init(HKDFParameters(r, null, c.toByteArray(StandardCharsets.UTF_8))); val k = ByteArray(length); h.generateBytes(k, 0, length); return k
     }
     private fun calculateHMAC(d: ByteArray, k: ByteArray): ByteArray {
         val h = HMac(SHA256Digest()); h.init(KeyParameter(k)); val o = ByteArray(h.macSize); h.update(d, 0, d.size); h.doFinal(o, 0); return o

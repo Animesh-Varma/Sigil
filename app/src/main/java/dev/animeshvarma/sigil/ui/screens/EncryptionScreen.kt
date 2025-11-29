@@ -16,7 +16,6 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.UiState
-import dev.animeshvarma.sigil.ui.theme.bounceClick
 
 @Composable
 fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
@@ -67,7 +66,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                 onClick = { viewModel.onLogsClicked() },
                 shape = CircleShape,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                modifier = Modifier.height(48.dp).bounceClick()
+                modifier = Modifier.height(48.dp) // Removed bounceClick
             ) {
                 Text("Logs", color = MaterialTheme.colorScheme.primary)
             }
@@ -75,14 +74,14 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
             Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
                     onClick = { viewModel.onEncrypt() },
-                    modifier = Modifier.weight(1f).height(48.dp).bounceClick(),
+                    modifier = Modifier.weight(1f).height(48.dp), // Removed bounceClick
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary)
                 ) { Text("Encrypt") }
 
                 Button(
                     onClick = { viewModel.onDecrypt() },
-                    modifier = Modifier.weight(1f).height(48.dp).bounceClick(),
+                    modifier = Modifier.weight(1f).height(48.dp), // Removed bounceClick
                     shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
                 ) { Text("Decrypt") }
