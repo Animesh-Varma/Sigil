@@ -1,8 +1,6 @@
 package dev.animeshvarma.sigil.ui.screens
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
@@ -18,7 +16,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -31,6 +31,8 @@ import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.crypto.CryptoEngine
 import dev.animeshvarma.sigil.model.AlgorithmRegistry
 import dev.animeshvarma.sigil.model.UiState
+import dev.animeshvarma.sigil.ui.components.SigilButtonGroup // [NEW]
+import dev.animeshvarma.sigil.ui.components.StyledLayerContainer // [NEW]
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +40,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     val context = LocalContext.current
     var showAddLayerSheet by remember { mutableStateOf(false) }
 
+    // Spacing
     val spaceBetweenTopSections = 16.dp
     val spaceLayersToInput = 10.dp
     val spaceInputToPass = 10.dp
@@ -47,7 +50,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     Column(modifier = Modifier.fillMaxHeight()) {
         Spacer(modifier = Modifier.height(7.dp))
 
-        // Compression Toggle
+        // Compression
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -66,7 +69,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(spaceBetweenTopSections))
 
-        // Layer Manager
+        // Layers
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,22 +140,12 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(spacePassToButtons))
 
-        // Actions
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
-                onClick = { viewModel.onLogsClicked() },
-                shape = CircleShape,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                modifier = Modifier.height(48.dp)
-            ) { Text("Logs") }
-
-            Row(modifier = Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { viewModel.onEncrypt() }, modifier = Modifier.weight(1f).height(48.dp), shape = CircleShape) { Text("Encrypt") }
-                Button(onClick = { viewModel.onDecrypt() }, modifier = Modifier.weight(1f).height(48.dp), shape = CircleShape,
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer, contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
-                ) { Text("Decrypt") }
-            }
-        }
+        // [FIX 1] Replaced separate buttons with SigilButtonGroup
+        SigilButtonGroup(
+            onLogs = { viewModel.onLogsClicked() },
+            onEncrypt = { viewModel.onEncrypt() },
+            onDecrypt = { viewModel.onDecrypt() }
+        )
 
         Spacer(modifier = Modifier.height(spaceButtonsToOutput))
 
@@ -190,43 +183,42 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     }
 }
 
-// Draggable Layer Item (Same as before)
+// [FIX 3] Styled Draggable Item
 @Composable
 fun DraggableLayerItem(index: Int, name: String, onMoveUp: () -> Unit, onMoveDown: () -> Unit, onDelete: () -> Unit) {
     var verticalDragOffset by remember { mutableFloatStateOf(0f) }
     val dragThreshold = 50f
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-            .padding(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Column { Text("Layer ${index + 1}: $name", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface) }
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Default.DragIndicator,
-                contentDescription = "Drag",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(24.dp).pointerInput(Unit) {
-                    detectDragGestures(onDragEnd = { verticalDragOffset = 0f }, onDragCancel = { verticalDragOffset = 0f }) { change, dragAmount ->
-                        change.consume()
-                        verticalDragOffset += dragAmount.y
-                        if (verticalDragOffset < -dragThreshold) { onMoveUp(); verticalDragOffset = 0f }
-                        else if (verticalDragOffset > dragThreshold) { onMoveDown(); verticalDragOffset = 0f }
+    StyledLayerContainer(modifier = Modifier.padding(2.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text("Layer ${index + 1}: $name", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurface)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.DragIndicator,
+                    contentDescription = "Drag",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(24.dp).pointerInput(Unit) {
+                        detectDragGestures(onDragEnd = { verticalDragOffset = 0f }, onDragCancel = { verticalDragOffset = 0f }) { change, dragAmount ->
+                            change.consume()
+                            verticalDragOffset += dragAmount.y
+                            if (verticalDragOffset < -dragThreshold) { onMoveUp(); verticalDragOffset = 0f }
+                            else if (verticalDragOffset > dragThreshold) { onMoveDown(); verticalDragOffset = 0f }
+                        }
                     }
-                }
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp).clickable { onDelete() })
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Icon(Icons.Default.Delete, "Delete", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp).clickable { onDelete() })
+            }
         }
     }
 }
 
-// Updated Add Layer Sheet with ListItem
 @Composable
 fun AddLayerSheetContent(onSelect: (CryptoEngine.Algorithm) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
@@ -268,13 +260,18 @@ fun AddLayerSheetContent(onSelect: (CryptoEngine.Algorithm) -> Unit) {
 
             items(filtered) { algoData ->
                 val engineEnum = CryptoEngine.Algorithm.valueOf(algoData.id)
-                // [FIX] Using Official Material 3 ListItem
-                ListItem(
-                    headlineContent = { Text(algoData.name, fontWeight = FontWeight.SemiBold) },
-                    supportingContent = { Text(algoData.description) },
-                    modifier = Modifier.clickable { onSelect(engineEnum) }
-                )
-                HorizontalDivider()
+                // [FIX 3] Rounded Items in Search List
+                Surface(
+                    modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    ListItem(
+                        headlineContent = { Text(algoData.name, fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text(algoData.description) },
+                        modifier = Modifier.clickable { onSelect(engineEnum) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                    )
+                }
             }
         }
         Spacer(modifier = Modifier.height(24.dp))

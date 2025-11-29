@@ -1,9 +1,12 @@
 package dev.animeshvarma.sigil.ui
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -14,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset // [FIX] Added missing import
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
@@ -50,10 +54,7 @@ fun SigilApp(
             )
         }
     ) {
-        // [FIX] Box ensures Loading Overlay is on TOP
         Box(modifier = modifier.fillMaxSize()) {
-
-            // MAIN APP CONTENT
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -87,12 +88,17 @@ fun SigilApp(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                // CONTENT SWITCHER
                 Box(modifier = Modifier.weight(1f)) {
                     AnimatedContent(
                         targetState = uiState.currentScreen,
                         transitionSpec = {
-                            fadeIn(tween(300)) + scaleIn(initialScale = 0.95f) togetherWith fadeOut(tween(300))
+                            val springSpec = spring<Float>(
+                                stiffness = Spring.StiffnessMedium,
+                                dampingRatio = Spring.DampingRatioLowBouncy
+                            )
+
+                            fadeIn(animationSpec = springSpec) + scaleIn(initialScale = 0.92f, animationSpec = springSpec) togetherWith
+                                    fadeOut(animationSpec = springSpec)
                         },
                         label = "ScreenTransition"
                     ) { target ->
@@ -105,13 +111,12 @@ fun SigilApp(
                 }
             }
 
-            // GLOBAL LOADING OVERLAY
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.5f))
-                        .clickable(enabled = false) {}, // Block clicks
+                        .clickable(enabled = false) {},
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
@@ -119,7 +124,6 @@ fun SigilApp(
             }
         }
 
-        // LOGS OVERLAY
         if (uiState.showLogsDialog) {
             LogsDialog(
                 logs = uiState.logs,
@@ -144,31 +148,45 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Material 3 Segmented Buttons
         SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth(0.7f)) {
             SegmentedButton(
                 selected = uiState.selectedMode == SigilMode.AUTO,
                 onClick = { viewModel.onModeSelected(SigilMode.AUTO) },
                 shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
-            ) {
-                Text("Auto")
-            }
+            ) { Text("Auto") }
             SegmentedButton(
                 selected = uiState.selectedMode == SigilMode.CUSTOM,
                 onClick = { viewModel.onModeSelected(SigilMode.CUSTOM) },
                 shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
-            ) {
-                Text("Custom")
-            }
+            ) { Text("Custom") }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.fillMaxSize()) {
-            if (uiState.selectedMode == SigilMode.AUTO) {
-                EncryptionInterface(viewModel, uiState)
-            } else {
-                CustomEncryptionScreen(viewModel, uiState)
+            AnimatedContent(
+                targetState = uiState.selectedMode,
+                transitionSpec = {
+                    val slideSpring = spring<IntOffset>(
+                        stiffness = Spring.StiffnessMedium,
+                        dampingRatio = Spring.DampingRatioLowBouncy
+                    )
+
+                    if (targetState == SigilMode.CUSTOM) {
+                        slideInHorizontally(animationSpec = slideSpring) { it } + fadeIn() togetherWith
+                                slideOutHorizontally(animationSpec = slideSpring) { -it } + fadeOut()
+                    } else {
+                        slideInHorizontally(animationSpec = slideSpring) { -it } + fadeIn() togetherWith
+                                slideOutHorizontally(animationSpec = slideSpring) { it } + fadeOut()
+                    }
+                },
+                label = "TabTransition"
+            ) { mode ->
+                if (mode == SigilMode.AUTO) {
+                    EncryptionInterface(viewModel, uiState)
+                } else {
+                    CustomEncryptionScreen(viewModel, uiState)
+                }
             }
         }
     }
