@@ -150,7 +150,7 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
         modifier = Modifier.padding(horizontal = 16.dp).fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth(0.7f)) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth(0.65f)) {
             SegmentedButton(
                 selected = uiState.selectedMode == SigilMode.AUTO,
                 onClick = { viewModel.onModeSelected(SigilMode.AUTO) },
@@ -163,7 +163,7 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
             ) { Text("Custom") }
         }
 
-        Spacer(modifier = Modifier.height(18.dp))
+        Spacer(modifier = Modifier.height(15.dp))
 
         Box(modifier = Modifier.fillMaxSize()) {
 
