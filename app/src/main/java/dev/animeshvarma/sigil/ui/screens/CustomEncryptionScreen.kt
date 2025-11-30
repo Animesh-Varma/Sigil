@@ -1,19 +1,17 @@
 package dev.animeshvarma.sigil.ui.screens
 
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items // [CRITICAL FIX] Enables list support
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -35,7 +33,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.AnnotatedString
@@ -45,10 +42,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
+import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.crypto.CryptoEngine
 import dev.animeshvarma.sigil.model.AlgorithmRegistry
-import dev.animeshvarma.sigil.model.SigilAlgorithm
-import dev.animeshvarma.sigil.model.UiState
+import dev.animeshvarma.sigil.model.SigilAlgorithm // [CRITICAL FIX]
 import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
@@ -116,14 +113,16 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            // Scrollable Area
+            // Scrollable Area with Fading Edge
             val showFadingEdge = uiState.customLayers.size > 3
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 180.dp)
-                    .then(if (showFadingEdge) Modifier.verticalFadingEdge() else Modifier)
+                    .heightIn(max = 180.dp) // ~3 items
+                    .then(
+                        if (showFadingEdge) Modifier.verticalFadingEdge() else Modifier
+                    )
             ) {
                 LazyColumn(
                     state = listState,
@@ -241,8 +240,8 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     if (showAddLayerSheet) {
         ModalBottomSheet(onDismissRequest = { showAddLayerSheet = false }) {
             AddLayerSheetContent(
-                onAdd = { algos ->
-                    viewModel.addLayers(algos)
+                onSelect = { algo ->
+                    viewModel.addLayer(algo)
                     showAddLayerSheet = false
                 }
             )
@@ -250,7 +249,6 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     }
 }
 
-// MovableLayerItem
 @Composable
 fun MovableLayerItem(
     index: Int,
@@ -287,42 +285,15 @@ fun MovableLayerItem(
 }
 
 @Composable
-fun AddLayerSheetContent(onAdd: (List<CryptoEngine.Algorithm>) -> Unit) {
+fun AddLayerSheetContent(onSelect: (CryptoEngine.Algorithm) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
     var searchDescription by remember { mutableStateOf(false) }
-    var selectedAlgos by remember { mutableStateOf(setOf<CryptoEngine.Algorithm>()) }
     val allAlgos = AlgorithmRegistry.supportedAlgorithms
     val focusManager = LocalFocusManager.current
 
     Column(modifier = Modifier.padding(16.dp)) {
-        // [FIX] Header Row with Title and Action Button
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Add Encryption Layer", fontSize = 20.sp, fontWeight = FontWeight.Bold)
-
-            val interactionSource = remember { MutableInteractionSource() }
-            val isPressed by interactionSource.collectIsPressedAsState()
-            val scale by animateFloatAsState(if (isPressed) 0.9f else 1f, label = "ButtonBounce")
-
-            Button(
-                onClick = { onAdd(selectedAlgos.toList()) },
-                enabled = selectedAlgos.isNotEmpty(),
-                shape = CircleShape,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
-                interactionSource = interactionSource,
-                modifier = Modifier
-                    .height(32.dp)
-                    .scale(scale)
-            ) {
-                Text(
-                    text = "Add${if (selectedAlgos.isNotEmpty()) " (${selectedAlgos.size})" else ""}",
-                    fontSize = 13.sp
-                )
-            }
-        }
+        Text("Add Encryption Layer", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedTextField(
             value = searchQuery,
@@ -346,44 +317,25 @@ fun AddLayerSheetContent(onAdd: (List<CryptoEngine.Algorithm>) -> Unit) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box(modifier = Modifier.weight(1f)) {
-            LazyColumn {
-                val filtered = allAlgos.filter { algo ->
-                    val nameMatch = algo.name.contains(searchQuery, ignoreCase = true)
-                    if (searchDescription) nameMatch || algo.description.contains(searchQuery, ignoreCase = true) else nameMatch
-                }
+        LazyColumn {
+            val filtered = allAlgos.filter { algo ->
+                val nameMatch = algo.name.contains(searchQuery, ignoreCase = true)
+                if (searchDescription) nameMatch || algo.description.contains(searchQuery, ignoreCase = true) else nameMatch
+            }
 
-                items(filtered) { algoData ->
-                    val engineEnum = CryptoEngine.Algorithm.valueOf(algoData.id)
-                    val isSelected = selectedAlgos.contains(engineEnum)
-
-                    Surface(
-                        modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)),
-                        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerLow
-                    ) {
-                        ListItem(
-                            headlineContent = {
-                                Text(
-                                    algoData.name,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
-                                )
-                            },
-                            supportingContent = { Text(algoData.description) },
-                            trailingContent = {
-                                Checkbox(
-                                    checked = isSelected,
-                                    onCheckedChange = { checked ->
-                                        selectedAlgos = if (checked) selectedAlgos + engineEnum else selectedAlgos - engineEnum
-                                    }
-                                )
-                            },
-                            modifier = Modifier.clickable {
-                                selectedAlgos = if (isSelected) selectedAlgos - engineEnum else selectedAlgos + engineEnum
-                            },
-                            colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                        )
-                    }
+            // [FIXED] Used the imported items extension
+            items(filtered) { algoData ->
+                val engineEnum = CryptoEngine.Algorithm.valueOf(algoData.id)
+                Surface(
+                    modifier = Modifier.padding(vertical = 4.dp).clip(RoundedCornerShape(16.dp)),
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    ListItem(
+                        headlineContent = { Text(algoData.name, fontWeight = FontWeight.SemiBold) },
+                        supportingContent = { Text(algoData.description) },
+                        modifier = Modifier.clickable { onSelect(engineEnum) },
+                        colors = ListItemDefaults.colors(containerColor = Color.Transparent)
+                    )
                 }
             }
         }
@@ -412,10 +364,7 @@ fun Modifier.simpleVerticalScrollbar(
         val needDrawScrollbar = state.isScrollInProgress || alpha > 0.0f
 
         if (needDrawScrollbar) {
-            val totalItems = state.layoutInfo.totalItemsCount
-            if (totalItems == 0) return@drawWithContent
-
-            val elementHeight = this.size.height / totalItems
+            val elementHeight = this.size.height / state.layoutInfo.totalItemsCount
             val scrollbarOffsetY = firstVisibleElementIndex * elementHeight
             val scrollbarHeight = state.layoutInfo.visibleItemsInfo.size * elementHeight
 
