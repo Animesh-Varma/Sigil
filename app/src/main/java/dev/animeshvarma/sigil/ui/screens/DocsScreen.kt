@@ -112,7 +112,7 @@ fun ReleasesContent() {
         ReleaseData(
             version = "v0.2",
             title = "The Custom Workbench",
-            tag = "Current Build",
+            tag = "Current PR Build",
             categories = listOf(
                 ReleaseCategory(
                     "User Interface",
@@ -125,7 +125,7 @@ fun ReleasesContent() {
                     )
                 ),
                 ReleaseCategory(
-                    "Core Cryptography (Engine v8.0)",
+                    "Core Cryptography (Engine v0.8.0)",
                     listOf(
                         "Engine Fixes: Corrected Block Size and Key Size logic for algorithms like Blowfish and RC6.",
                         "Compression: Added ZLIB compression toggle (Compression-before-Encryption).",
@@ -150,7 +150,7 @@ fun ReleasesContent() {
             tag = "Initial Pre-release",
             categories = listOf(
                 ReleaseCategory(
-                    "Core Cryptography (Engine v7.0)",
+                    "Core Cryptography (Engine v0.7.0)",
                     listOf(
                         "Initial Encryption implementation: Randomized triple-layer chain (AES->Twofish->Serpent).",
                         "Blob Container: Opaque Base64 output with hidden metadata.",
