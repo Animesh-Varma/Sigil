@@ -108,8 +108,6 @@ data class ReleaseCategory(
 @Composable
 fun ReleasesContent() {
     val releases = listOf(
-        // ... (Keep your release data same as before) ...
-        // (Data omitted for brevity, paste your ReleaseData list here)
         // --- v0.2 (NEWEST) ---
         ReleaseData(
             version = "v0.2",
