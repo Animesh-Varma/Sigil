@@ -96,7 +96,7 @@ fun DocsContent() {
 data class ReleaseData(
     val version: String,
     val title: String,
-    val date: String,
+    val tag: String,
     val categories: List<ReleaseCategory>
 )
 
@@ -112,7 +112,7 @@ fun ReleasesContent() {
         ReleaseData(
             version = "v0.2",
             title = "The Custom Workbench",
-            date = "Current Build",
+            tag = "Current Build",
             categories = listOf(
                 ReleaseCategory(
                     "User Interface",
@@ -147,7 +147,7 @@ fun ReleasesContent() {
         ReleaseData(
             version = "v0.1",
             title = "The Foundation",
-            date = "Initial Pre-release",
+            tag = "Initial Pre-release",
             categories = listOf(
                 ReleaseCategory(
                     "Core Cryptography (Engine v7.0)",
@@ -259,7 +259,7 @@ fun ReleaseCard(release: ReleaseData, defaultExpanded: Boolean) {
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = release.date,
+                            text = release.tag,
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
