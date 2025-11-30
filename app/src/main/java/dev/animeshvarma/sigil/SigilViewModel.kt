@@ -79,9 +79,8 @@ class SigilViewModel : ViewModel() {
             )
         }
     }
-
-    fun addLayer(algo: CryptoEngine.Algorithm) {
-        _uiState.update { it.copy(customLayers = it.customLayers + algo) }
+    fun addLayers(algos: List<CryptoEngine.Algorithm>) {
+        _uiState.update { it.copy(customLayers = it.customLayers + algos) }
     }
 
     fun removeLayer(index: Int) {
