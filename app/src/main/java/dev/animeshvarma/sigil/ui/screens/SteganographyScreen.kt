@@ -8,7 +8,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,12 +17,10 @@ import dev.animeshvarma.sigil.ui.components.SigilSegmentedControl
 import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocsScreen() {
-    // Local state for this screen's tabs
+fun SteganographyScreen() {
     var selectedTabIndex by remember { mutableIntStateOf(0) }
-    val tabs = listOf("Docs", "Releases")
+    val tabs = listOf("Text", "Photo", "Video")
 
     Column(
         modifier = Modifier
@@ -31,17 +28,17 @@ fun DocsScreen() {
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        // Standard Tab Selector
         SigilSegmentedControl(
             items = tabs,
             selectedIndex = selectedTabIndex,
             onItemSelection = { selectedTabIndex = it },
-            modifier = Modifier.fillMaxWidth(0.65f)
+            modifier = Modifier.fillMaxWidth(0.9f)
         )
 
         Spacer(modifier = Modifier.height(15.dp))
 
-        Spacer(modifier = Modifier.height(15.dp))
-
+        // Animated Content
         Box(modifier = Modifier.fillMaxSize()) {
             val slideSpring = spring<IntOffset>(
                 stiffness = AnimationConfig.STIFFNESS,
@@ -51,7 +48,6 @@ fun DocsScreen() {
             AnimatedContent(
                 targetState = selectedTabIndex,
                 transitionSpec = {
-                    // Logic: If index increases (Docs -> Releases), slide left. Else slide right.
                     if (targetState > initialState) {
                         slideInHorizontally(animationSpec = slideSpring) { it } + fadeIn() togetherWith
                                 slideOutHorizontally(animationSpec = slideSpring) { -it } + fadeOut()
@@ -60,25 +56,14 @@ fun DocsScreen() {
                                 slideOutHorizontally(animationSpec = slideSpring) { it } + fadeOut()
                     }
                 },
-                label = "DocsTabTransition"
+                label = "StegoTabTransition"
             ) { tabIndex ->
                 when (tabIndex) {
-                    0 -> DocsContent()
-                    1 -> ReleasesContent()
+                    0 -> UnderConstructionView() // Text
+                    1 -> UnderConstructionView() // Photo
+                    2 -> UnderConstructionView() // Video
                 }
             }
         }
     }
-}
-
-@Composable
-fun DocsContent() {
-    // Placeholder for Docs
-    UnderConstructionView()
-}
-
-@Composable
-fun ReleasesContent() {
-    // Placeholder for Releases
-    UnderConstructionView()
 }

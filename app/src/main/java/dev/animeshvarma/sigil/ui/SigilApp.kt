@@ -32,6 +32,7 @@ import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen
 import dev.animeshvarma.sigil.ui.screens.DocsScreen
 import dev.animeshvarma.sigil.ui.screens.EncryptionInterface
+import dev.animeshvarma.sigil.ui.screens.SteganographyScreen
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 import kotlinx.coroutines.launch
 
@@ -110,6 +111,10 @@ fun SigilApp(
                         when (target) {
                             AppScreen.HOME -> HomeContent(viewModel, uiState)
                             AppScreen.DOCS -> DocsScreen()
+                            AppScreen.STEGANOGRAPHY -> SteganographyScreen()
+                            AppScreen.FILE_ENCRYPTION,
+                            AppScreen.ASYMMETRIC,
+                            AppScreen.PARTITIONS -> UnderConstructionView()
                             else -> UnderConstructionView()
                         }
                     }
@@ -162,7 +167,8 @@ fun HomeContent(viewModel: SigilViewModel, uiState: UiState) {
             onItemSelection = { index ->
                 val newMode = if (index == 0) SigilMode.AUTO else SigilMode.CUSTOM
                 viewModel.onModeSelected(newMode)
-            }
+            },
+            modifier = Modifier.fillMaxWidth(0.65f)
         )
 
         Spacer(modifier = Modifier.height(15.dp))

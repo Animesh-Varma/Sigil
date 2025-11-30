@@ -17,6 +17,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.filled.VisibilityOff
 import dev.animeshvarma.sigil.model.AppScreen
 
 @Composable
@@ -77,11 +80,26 @@ fun SigilDrawerContent(
                         isSelected = currentScreen == AppScreen.STEGANOGRAPHY,
                         onClick = { onScreenSelected(AppScreen.STEGANOGRAPHY) }
                     )
+
                     DrawerItem(
-                        label = "Veil",
+                        label = "File/Dir Encryption",
+                        icon = Icons.Default.Folder,
+                        isSelected = currentScreen == AppScreen.FILE_ENCRYPTION,
+                        onClick = { onScreenSelected(AppScreen.FILE_ENCRYPTION) }
+                    )
+
+                    DrawerItem(
+                        label = "Asymmetric",
+                        icon = Icons.Default.Public,
+                        isSelected = currentScreen == AppScreen.ASYMMETRIC,
+                        onClick = { onScreenSelected(AppScreen.ASYMMETRIC) }
+                    )
+
+                    DrawerItem(
+                        label = "Partitions",
                         icon = Icons.Default.Texture,
-                        isSelected = currentScreen == AppScreen.VEIL,
-                        onClick = { onScreenSelected(AppScreen.VEIL) }
+                        isSelected = currentScreen == AppScreen.PARTITIONS,
+                        onClick = { onScreenSelected(AppScreen.PARTITIONS) }
                     )
                 }
             }

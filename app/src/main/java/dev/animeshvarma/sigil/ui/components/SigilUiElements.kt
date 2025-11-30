@@ -124,9 +124,7 @@ fun SigilSegmentedControl(
     modifier: Modifier = Modifier
 ) {
     SingleChoiceSegmentedButtonRow(
-        modifier = modifier
-            .fillMaxWidth(0.65f) // Standardized Width
-            .height(38.dp)       // Standardized Height
+        modifier = modifier.height(36.dp)
     ) {
         items.forEachIndexed { index, label ->
             SegmentedButton(
