@@ -137,7 +137,7 @@ fun ReleasesContent() {
                     "Known Limitations",
                     listOf(
                         "Side Modules: All tabs except Home & Release are placeholders.",
-                        "Lackluster optimization: The encryption/decryption, as well as the animations, lack proper optimizations."
+                        "Lackluster optimization: The encryption/decryption, as well as the animations lack proper optimizations."
                     )
                 )
 
