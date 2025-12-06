@@ -28,7 +28,6 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Color(0xFF7D5260)
 )
 
-// FIX: Define the Typography instance here
 val AppTypography = Typography(
     bodyLarge = TextStyle(
         fontFamily = FontFamily.Default,
@@ -66,7 +65,7 @@ fun SigilTheme(
 
     MaterialTheme(
         colorScheme = colorScheme,
-        typography = AppTypography, // FIX: Use the variable we defined above
+        typography = AppTypography,
         content = content
     )
 }

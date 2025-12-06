@@ -97,12 +97,10 @@ object CryptoEngine {
         algorithms.forEachIndexed { index, algo ->
             val layerId = index + 1
 
-            // [FIX] Use correct Block Size for IV
             val ivSize = if (algo == Algorithm.AES_GCM) 12 else getBlockSize(algo)
             val iv = ByteArray(ivSize).apply { secureRandom.nextBytes(this) }
             ivList.add(encoder.encodeToString(iv))
 
-            // [FIX] Use correct Key Size
             val keySize = getKeySize(algo)
             val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId", keySize)
 
@@ -203,7 +201,6 @@ object CryptoEngine {
                 val algo = Algorithm.valueOf(algoNames[i])
                 val iv = decoder.decode(ivStrings[i])
 
-                // [FIX] Derive correct key size
                 val keySize = getKeySize(algo)
                 val layerKey = deriveSubKey(rootSecret, "SIGIL_LAYER_$layerId", keySize)
 

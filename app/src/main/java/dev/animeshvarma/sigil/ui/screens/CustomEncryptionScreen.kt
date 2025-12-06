@@ -1,5 +1,6 @@
 package dev.animeshvarma.sigil.ui.screens
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -42,8 +43,10 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.crypto.CryptoEngine
 import dev.animeshvarma.sigil.model.AlgorithmRegistry
@@ -52,6 +55,8 @@ import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -134,20 +139,53 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                 ) {
                     itemsIndexed(
                         items = uiState.customLayers,
-                        key = { index, algo -> "${algo.name}_$index" }
-                    ) { index, algo ->
-                        Box(modifier = Modifier.animateItemPlacement(
-                            animationSpec = spring(
-                                stiffness = AnimationConfig.STIFFNESS,
-                                dampingRatio = AnimationConfig.DAMPING
-                            )
-                        )) {
+                        key = { _, entry -> entry.id }
+                    ) { index, entry ->
+
+                        // Local Animation State
+                        val scale = remember { Animatable(1f) }
+                        val elevation = remember { Animatable(0f) }
+                        val scope = rememberCoroutineScope()
+
+                        fun triggerPopEffect() {
+                            scope.launch {
+                                launch { scale.animateTo(1.05f, spring(dampingRatio = 0.6f, stiffness = 400f)) }
+                                launch { elevation.animateTo(8f, spring(dampingRatio = 0.6f, stiffness = 400f)) }
+                            }
+                            scope.launch {
+                                delay(150)
+                                launch { scale.animateTo(1f, spring(dampingRatio = 0.6f, stiffness = 400f)) }
+                                launch { elevation.animateTo(0f, spring(dampingRatio = 0.6f, stiffness = 400f)) }
+                            }
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .animateItem(
+                                    placementSpec = spring<IntOffset>(
+                                        stiffness = AnimationConfig.STIFFNESS,
+                                        dampingRatio = AnimationConfig.DAMPING
+                                    )
+                                )
+                                .zIndex(if (scale.value > 1f) 1f else 0f)
+                                .graphicsLayer {
+                                    scaleX = scale.value
+                                    scaleY = scale.value
+                                    shadowElevation = elevation.value
+                                }
+                        ) {
                             MovableLayerItem(
                                 index = index,
                                 total = uiState.customLayers.size,
-                                name = algo.name.replace("_", "-"),
-                                onMoveUp = { viewModel.moveLayer(index, index - 1) },
-                                onMoveDown = { viewModel.moveLayer(index, index + 1) },
+                                name = entry.algorithm.name.replace("_", "-"),
+                                onMoveUp = {
+                                    triggerPopEffect()
+                                    viewModel.moveLayer(index, index - 1)
+                                },
+                                onMoveDown = {
+                                    triggerPopEffect()
+                                    viewModel.moveLayer(index, index + 1)
+                                },
                                 onDelete = { viewModel.removeLayer(index) }
                             )
                         }

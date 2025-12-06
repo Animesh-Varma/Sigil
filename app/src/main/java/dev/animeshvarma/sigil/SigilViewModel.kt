@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.animeshvarma.sigil.crypto.CryptoEngine
 import dev.animeshvarma.sigil.model.AppScreen
+import dev.animeshvarma.sigil.model.LayerEntry
 import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
 import kotlinx.coroutines.Dispatchers
@@ -21,20 +22,11 @@ class SigilViewModel : ViewModel() {
     val uiState: StateFlow<UiState> = _uiState
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    // [FIX #3] Logic to update the correct field based on active mode
+    // --- INPUT HANDLERS ---
     fun onInputTextChanged(newText: String) {
         _uiState.update {
             if (it.selectedMode == SigilMode.AUTO) it.copy(autoInput = newText)
             else it.copy(customInput = newText)
-        }
-    }
-
-    fun moveLayer(fromIndex: Int, toIndex: Int) {
-        val list = _uiState.value.customLayers.toMutableList()
-        if (fromIndex in list.indices && toIndex in list.indices) {
-            val item = list.removeAt(fromIndex)
-            list.add(toIndex, item)
-            _uiState.update { it.copy(customLayers = list) }
         }
     }
 
@@ -45,6 +37,7 @@ class SigilViewModel : ViewModel() {
         }
     }
 
+    // --- NAVIGATION ---
     fun onModeSelected(mode: SigilMode) {
         _uiState.update { it.copy(selectedMode = mode) }
     }
@@ -53,6 +46,7 @@ class SigilViewModel : ViewModel() {
         _uiState.update { it.copy(currentScreen = screen) }
     }
 
+    // --- LOGS ---
     fun onLogsClicked() {
         _uiState.update { it.copy(showLogsDialog = !it.showLogsDialog) }
     }
@@ -79,8 +73,20 @@ class SigilViewModel : ViewModel() {
             )
         }
     }
+
+    // --- CUSTOM LAYER MANAGEMENT ---
+    fun addLayer(algo: CryptoEngine.Algorithm) {
+        _uiState.update {
+            val newEntry = LayerEntry(algorithm = algo)
+            it.copy(customLayers = it.customLayers + newEntry)
+        }
+    }
+
     fun addLayers(algos: List<CryptoEngine.Algorithm>) {
-        _uiState.update { it.copy(customLayers = it.customLayers + algos) }
+        _uiState.update {
+            val newEntries: List<LayerEntry> = algos.map { algo -> LayerEntry(algorithm = algo) }
+            it.copy(customLayers = it.customLayers + newEntries)
+        }
     }
 
     fun removeLayer(index: Int) {
@@ -91,13 +97,22 @@ class SigilViewModel : ViewModel() {
         }
     }
 
+    fun moveLayer(fromIndex: Int, toIndex: Int) {
+        val list = _uiState.value.customLayers.toMutableList()
+        if (fromIndex in list.indices && toIndex in list.indices) {
+            val item = list.removeAt(fromIndex)
+            list.add(toIndex, item)
+            _uiState.update { it.copy(customLayers = list) }
+        }
+    }
+
     fun toggleCompression(enabled: Boolean) {
         _uiState.update { it.copy(isCompressionEnabled = enabled) }
     }
 
+    // --- CRYPTO OPERATIONS ---
     fun onEncrypt() {
         val state = _uiState.value
-        // Select correct inputs
         val pwd = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
         val input = if (state.selectedMode == SigilMode.AUTO) state.autoInput else state.customInput
 
@@ -111,16 +126,20 @@ class SigilViewModel : ViewModel() {
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val (chain, compress) = if (state.selectedMode == SigilMode.AUTO) {
-                    val randomChain = listOf(
+                val chain: List<CryptoEngine.Algorithm>
+                val compress: Boolean
+
+                if (state.selectedMode == SigilMode.AUTO) {
+                    chain = listOf(
                         CryptoEngine.Algorithm.AES_GCM,
                         CryptoEngine.Algorithm.TWOFISH_CBC,
                         CryptoEngine.Algorithm.SERPENT_CBC
                     ).shuffled()
+                    compress = true
                     addLog("Auto Mode: Randomized layer sequence.")
-                    Pair(randomChain, true)
                 } else {
-                    Pair(state.customLayers, state.isCompressionEnabled)
+                    chain = state.customLayers.map { it.algorithm }
+                    compress = state.isCompressionEnabled
                 }
 
                 if (chain.isEmpty()) throw Exception("No encryption layers selected.")

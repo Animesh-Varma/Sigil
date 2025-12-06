@@ -212,7 +212,6 @@ fun ReleaseCard(release: ReleaseData, defaultExpanded: Boolean) {
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape) // 4. Border
             .clickable(
                 interactionSource = interactionSource,
-                // [FIX] Set indication to null to REMOVE the highlight/ripple entirely
                 indication = null,
                 onClick = { expanded = !expanded }
             )

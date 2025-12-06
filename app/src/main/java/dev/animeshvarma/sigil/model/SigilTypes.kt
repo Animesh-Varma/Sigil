@@ -1,5 +1,8 @@
 package dev.animeshvarma.sigil.model
 
+import dev.animeshvarma.sigil.crypto.CryptoEngine
+import java.util.UUID
+
 enum class SigilMode {
     AUTO, CUSTOM
 }
@@ -51,6 +54,11 @@ object AlgorithmRegistry {
         SigilAlgorithm("XTEA_CBC", "XTEA", "Extended TEA. Fixes weaknesses in TEA. Simple and efficient for small microcontrollers.", CipherType.BLOCK, CipherMode.CBC)
     )
 }
+data class LayerEntry(
+    val id: String = UUID.randomUUID().toString(),
+    val algorithm: CryptoEngine.Algorithm
+)
+
 data class UiState(
     val autoInput: String = "",
     val autoPassword: String = "",
@@ -66,6 +74,9 @@ data class UiState(
     val isLoading: Boolean = false,
     val showLogsDialog: Boolean = false,
 
-    val customLayers: List<dev.animeshvarma.sigil.crypto.CryptoEngine.Algorithm> = listOf(dev.animeshvarma.sigil.crypto.CryptoEngine.Algorithm.AES_GCM),
+    val customLayers: List<LayerEntry> = listOf(
+        LayerEntry(algorithm = CryptoEngine.Algorithm.AES_GCM)
+    ),
+
     val isCompressionEnabled: Boolean = true
 )
