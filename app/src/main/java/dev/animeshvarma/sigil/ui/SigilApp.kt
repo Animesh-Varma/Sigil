@@ -112,6 +112,7 @@ fun SigilApp(
                             AppScreen.HOME -> HomeContent(viewModel, uiState)
                             AppScreen.DOCS -> DocsScreen()
                             AppScreen.STEGANOGRAPHY -> SteganographyScreen()
+                            AppScreen.HEADERLESS,
                             AppScreen.FILE_ENCRYPTION,
                             AppScreen.ASYMMETRIC,
                             AppScreen.PARTITIONS -> UnderConstructionView()

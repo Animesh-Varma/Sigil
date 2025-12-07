@@ -9,6 +9,7 @@ enum class SigilMode {
 
 enum class AppScreen(val title: String) {
     HOME("Home"),
+    HEADERLESS("Headerless Mode"),
     FILE_ENCRYPTION("File/Dir Encryption"),
     ASYMMETRIC("Asymmetric"),
     STEGANOGRAPHY("Steganography"),

@@ -89,6 +89,13 @@ fun SigilDrawerContent(
                     )
 
                     DrawerItem(
+                        label = "Headerless Mode",
+                        icon = Icons.Default.Code,
+                        isSelected = currentScreen == AppScreen.HEADERLESS,
+                        onClick = { onScreenSelected(AppScreen.HEADERLESS) }
+                    )
+
+                    DrawerItem(
                         label = "Asymmetric",
                         icon = Icons.Default.Public,
                         isSelected = currentScreen == AppScreen.ASYMMETRIC,
