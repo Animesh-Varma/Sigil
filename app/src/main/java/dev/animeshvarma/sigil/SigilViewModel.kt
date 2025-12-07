@@ -110,6 +110,19 @@ class SigilViewModel : ViewModel() {
         _uiState.update { it.copy(isCompressionEnabled = enabled) }
     }
 
+    // --- INTENT HANDLING ---
+    fun handleIncomingSharedText(text: String) {
+        if (text.isNotBlank()) {
+            _uiState.update {
+                it.copy(
+                    autoInput = text,
+                    customInput = text
+                )
+            }
+            addLog("Received shared text from external app.")
+        }
+    }
+
     // --- CRYPTO OPERATIONS ---
     fun onEncrypt() {
         val state = _uiState.value

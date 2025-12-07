@@ -1,5 +1,6 @@
 package dev.animeshvarma.sigil.ui.screens
 
+import android.content.Intent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -263,14 +264,43 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             ),
             trailingIcon = {
-                IconButton(onClick = {
-                    if (uiState.customOutput.isNotEmpty()) {
-                        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-                        val clip = android.content.ClipData.newPlainText("Sigil Output", uiState.customOutput)
-                        clipboard.setPrimaryClip(clip)
-                        viewModel.addLog("Copied to clipboard")
+                Column {
+                    // SHARE BUTTON
+                    IconButton(onClick = {
+                        if (uiState.customOutput.isNotEmpty()) {
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, uiState.customOutput)
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, "Share Encrypted Message")
+                            context.startActivity(shareIntent)
+                            viewModel.addLog("Share Sheet opened.")
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                }) { Icon(Icons.Default.ContentCopy, "Copy") }
+
+                    // COPY BUTTON
+                    IconButton(onClick = {
+                        if (uiState.customOutput.isNotEmpty()) {
+                            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                            val clip = android.content.ClipData.newPlainText("Sigil Output", uiState.customOutput)
+                            clipboard.setPrimaryClip(clip)
+                            viewModel.addLog("Copied to clipboard")
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Copy",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         )
         Spacer(modifier = Modifier.height(8.dp))

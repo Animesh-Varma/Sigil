@@ -1,9 +1,11 @@
 package dev.animeshvarma.sigil.ui.screens
 
+import android.content.Intent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -80,18 +82,46 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             ),
             trailingIcon = {
-                IconButton(onClick = {
-                    if (uiState.autoOutput.isNotEmpty()) {
-                        val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
-                        val clip = android.content.ClipData.newPlainText("Sigil Output", uiState.autoOutput)
-                        clipboard.setPrimaryClip(clip)
-                        viewModel.addLog("Copied to clipboard")
+                Column {
+                    // SHARE BUTTON
+                    IconButton(onClick = {
+                        if (uiState.autoOutput.isNotEmpty()) {
+                            val sendIntent = Intent().apply {
+                                action = Intent.ACTION_SEND
+                                putExtra(Intent.EXTRA_TEXT, uiState.autoOutput)
+                                type = "text/plain"
+                            }
+                            val shareIntent = Intent.createChooser(sendIntent, "Share Encrypted Message")
+                            context.startActivity(shareIntent)
+                            viewModel.addLog("Share Sheet opened.")
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                }) {
-                    Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    // COPY BUTTON
+                    IconButton(onClick = {
+                        if (uiState.autoOutput.isNotEmpty()) {
+                            val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                            val clip = android.content.ClipData.newPlainText("Sigil Output", uiState.autoOutput)
+                            clipboard.setPrimaryClip(clip)
+                            viewModel.addLog("Copied to clipboard")
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "Copy",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
         )
+
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
