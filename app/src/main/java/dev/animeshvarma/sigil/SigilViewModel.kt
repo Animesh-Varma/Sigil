@@ -1,12 +1,17 @@
 package dev.animeshvarma.sigil
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.AndroidViewModel
 import dev.animeshvarma.sigil.crypto.CryptoEngine
 import dev.animeshvarma.sigil.model.AppScreen
 import dev.animeshvarma.sigil.model.LayerEntry
 import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
+import dev.animeshvarma.sigil.data.KeystoreRepository
+import dev.animeshvarma.sigil.data.VaultEntry
+import dev.animeshvarma.sigil.util.SecureMemory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,11 +21,22 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class SigilViewModel : ViewModel() {
+class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
+    private val repository = KeystoreRepository(application)
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+    private val _vaultEntries = MutableStateFlow<List<VaultEntry>>(emptyList())
+    val vaultEntries: StateFlow<List<VaultEntry>> = _vaultEntries
+
+    init {
+        refreshVault()
+    }
+
+    private fun refreshVault() {
+        _vaultEntries.value = repository.getEntries()
+    }
 
     // --- INPUT HANDLERS ---
     fun onInputTextChanged(newText: String) {
@@ -126,97 +142,104 @@ class SigilViewModel : ViewModel() {
     // --- CRYPTO OPERATIONS ---
     fun onEncrypt() {
         val state = _uiState.value
-        val pwd = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
+        val pwdString = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
         val input = if (state.selectedMode == SigilMode.AUTO) state.autoInput else state.customInput
 
-        if (pwd.isEmpty()) {
-            addLog("Error: Encryption aborted. Password is required.")
+        if (pwdString.isEmpty()) {
+            addLog("Error: Password is required.")
             return
         }
 
         _uiState.update { it.copy(isLoading = true) }
-        addLog("Encryption process started.")
 
         viewModelScope.launch(Dispatchers.IO) {
+            val pwdChars = pwdString.toCharArray()
             try {
-                val chain: List<CryptoEngine.Algorithm>
-                val compress: Boolean
-
-                if (state.selectedMode == SigilMode.AUTO) {
-                    chain = listOf(
-                        CryptoEngine.Algorithm.AES_GCM,
-                        CryptoEngine.Algorithm.TWOFISH_CBC,
-                        CryptoEngine.Algorithm.SERPENT_CBC
-                    ).shuffled()
-                    compress = true
-                    addLog("Auto Mode: Randomized layer sequence.")
-                } else {
-                    chain = state.customLayers.map { it.algorithm }
-                    compress = state.isCompressionEnabled
-                }
-
-                if (chain.isEmpty()) throw Exception("No encryption layers selected.")
+                val chain = if (state.selectedMode == SigilMode.AUTO) {
+                    listOf(CryptoEngine.Algorithm.AES_GCM, CryptoEngine.Algorithm.TWOFISH_CBC, CryptoEngine.Algorithm.SERPENT_CBC).shuffled()
+                } else { state.customLayers.map { it.algorithm } }
 
                 val result = CryptoEngine.encrypt(
                     data = input,
-                    password = pwd,
+                    password = pwdChars,
                     algorithms = chain,
-                    compress = compress,
+                    compress = state.isCompressionEnabled,
                     logCallback = { addLog(it) }
                 )
 
+                // Update UI
                 _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = result, isLoading = false)
+                    if (state.selectedMode == SigilMode.AUTO) it.copy(autoOutput = result, isLoading = false)
                     else it.copy(customOutput = result, isLoading = false)
                 }
+
             } catch (e: Exception) {
                 addLog("Error: ${e.message}")
-                _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = "Encryption Failed", isLoading = false)
-                    else it.copy(customOutput = "Encryption Failed", isLoading = false)
-                }
-                e.printStackTrace()
+                _uiState.update { it.copy(isLoading = false) }
+            } finally {
+                SecureMemory.wipe(pwdChars)
             }
         }
     }
 
     fun onDecrypt() {
         val state = _uiState.value
-        val pwd = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
+        val pwdString = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
         val input = if (state.selectedMode == SigilMode.AUTO) state.autoInput else state.customInput
 
-        if (pwd.isEmpty()) {
-            addLog("Error: Password required for decryption.")
-            return
-        }
-        if (input.isEmpty()) {
-            addLog("Warning: No input text found.")
-            return
-        }
-
         _uiState.update { it.copy(isLoading = true) }
-        addLog("Decryption process started.")
 
         viewModelScope.launch(Dispatchers.IO) {
+            val pwdChars = pwdString.toCharArray()
             try {
                 val decrypted = CryptoEngine.decrypt(
                     encryptedData = input,
-                    password = pwd,
+                    password = pwdChars, // Pass CharArray
                     logCallback = { addLog(it) }
                 )
 
                 _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = decrypted, isLoading = false)
+                    if (state.selectedMode == SigilMode.AUTO) it.copy(autoOutput = decrypted, isLoading = false)
                     else it.copy(customOutput = decrypted, isLoading = false)
                 }
-
             } catch (e: Exception) {
-                _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = "Decryption Failed", isLoading = false)
-                    else it.copy(customOutput = "Decryption Failed", isLoading = false)
-                }
-                addLog("Error: ${e.message}")
+                addLog("Decryption Error: ${e.message}")
+                _uiState.update { it.copy(isLoading = false) }
+            } finally {
+                SecureMemory.wipe(pwdChars)
             }
         }
+    }
+
+    // --- VAULT OPERATIONS ---
+    fun saveToVault(password: String) {
+        if (password.isEmpty()) {
+            addLog("Error: Cannot save empty key.")
+            return
+        }
+
+        val entropy = SecureMemory.calculateEntropy(password)
+        val alias = "Key_${System.currentTimeMillis() / 1000}"
+
+        repository.saveToVault(alias, password, entropy.score, entropy.label)
+        refreshVault()
+        addLog("Key saved to Hardware Vault as '$alias'.")
+    }
+
+    fun loadFromVault(entry: VaultEntry) {
+        val secret = repository.loadFromVault(entry.alias)
+        if (secret != null) {
+            onPasswordChanged(secret)
+            addLog("Key '${entry.alias}' loaded securely.")
+            // Note: In v0.4 we will avoid putting this in String state
+        } else {
+            addLog("Error: Failed to decrypt key from Vault.")
+        }
+    }
+
+    fun deleteFromVault(alias: String) {
+        repository.deleteEntry(alias)
+        refreshVault()
+        addLog("Key '$alias' destroyed.")
     }
 }
