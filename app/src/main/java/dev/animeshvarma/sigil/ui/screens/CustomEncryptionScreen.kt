@@ -55,6 +55,7 @@ import dev.animeshvarma.sigil.model.SigilAlgorithm
 import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
+import dev.animeshvarma.sigil.ui.components.SecurePasswordInput
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -64,8 +65,8 @@ import kotlinx.coroutines.launch
 fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     val context = LocalContext.current
     var showAddLayerSheet by remember { mutableStateOf(false) }
-
     val listState = rememberLazyListState()
+    val vaultEntries by viewModel.vaultEntries.collectAsState()
 
     // Spacing
     val spaceBetweenTopSections = 16.dp
@@ -223,19 +224,13 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(spaceInputToPass))
 
-        OutlinedTextField(
+        SecurePasswordInput(
             value = uiState.customPassword,
             onValueChange = { viewModel.onPasswordChanged(it) },
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth().height(64.dp),
-            shape = RoundedCornerShape(24.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            )
+            onSaveRequested = { viewModel.saveToVault(uiState.customPassword) },
+            vaultEntries = vaultEntries,
+            onEntrySelected = { viewModel.loadFromVault(it) },
+            modifier = Modifier.fillMaxWidth().height(64.dp)
         )
 
         Spacer(modifier = Modifier.height(spacePassToButtons))

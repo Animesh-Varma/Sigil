@@ -38,17 +38,15 @@ object SecureMemory {
         if (password.any { it.isDigit() }) poolSize += 10
         if (password.any { !it.isLetterOrDigit() }) poolSize += 32
 
-        // Shannon Entropy formula: H = L * log2(N)
         val entropy = password.length * log2(poolSize.toDouble())
 
-        // Normalize to 0-100 scale (100 bits is considered paranoid/unbreakable)
         val score = (entropy.coerceAtMost(100.0)).toInt()
 
         return when {
             score < 40 -> EntropyResult(score, "Weak", 0xFFCF6679) // Red
             score < 75 -> EntropyResult(score, "Moderate", 0xFFFFD54F) // Yellow
             score < 95 -> EntropyResult(score, "Strong", 0xFF81C784) // Green
-            else -> EntropyResult(score, "Paranoid", 0xFF00E676) // Bright Green
+            else -> EntropyResult(score, "Unbreakable", 0xFF00E676) // Bright Green
         }
     }
 }

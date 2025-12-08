@@ -7,20 +7,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.UiState
-import dev.animeshvarma.sigil.ui.components.SigilButtonGroup //  Added
+import dev.animeshvarma.sigil.ui.components.SecurePasswordInput
+import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 
 @Composable
 fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
     val context = LocalContext.current
+    val vaultEntries by viewModel.vaultEntries.collectAsState()
 
     Column(modifier = Modifier.fillMaxHeight()) {
         // 1. Input Field
@@ -40,20 +40,14 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(11.dp))
 
-        // 2. Password Field
-        OutlinedTextField(
+        // 2. SECURE PASSWORD FIELD (Vault Integrated)
+        SecurePasswordInput(
             value = uiState.autoPassword,
             onValueChange = { viewModel.onPasswordChanged(it) },
-            label = { Text("Password") },
-            modifier = Modifier.fillMaxWidth().height(64.dp),
-            shape = RoundedCornerShape(24.dp),
-            visualTransformation = PasswordVisualTransformation(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = Color.Transparent,
-                unfocusedContainerColor = Color.Transparent,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-            )
+            onSaveRequested = { viewModel.saveToVault(uiState.autoPassword) },
+            vaultEntries = vaultEntries,
+            onEntrySelected = { viewModel.loadFromVault(it) },
+            modifier = Modifier.fillMaxWidth().height(64.dp)
         )
 
         Spacer(modifier = Modifier.height(18.dp))
@@ -67,7 +61,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 4. Output Field
+        // 4. Output Field (With Share Intent)
         OutlinedTextField(
             value = uiState.autoOutput,
             onValueChange = { },
@@ -82,8 +76,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             ),
             trailingIcon = {
-                Column {
-                    // SHARE BUTTON
+                Row {
                     IconButton(onClick = {
                         if (uiState.autoOutput.isNotEmpty()) {
                             val sendIntent = Intent().apply {
@@ -96,14 +89,9 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                             viewModel.addLog("Share Sheet opened.")
                         }
                     }) {
-                        Icon(
-                            imageVector = Icons.Default.Share,
-                            contentDescription = "Share",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Icon(Icons.Default.Share, "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
 
-                    // COPY BUTTON
                     IconButton(onClick = {
                         if (uiState.autoOutput.isNotEmpty()) {
                             val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
@@ -112,16 +100,11 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                             viewModel.addLog("Copied to clipboard")
                         }
                     }) {
-                        Icon(
-                            imageVector = Icons.Default.ContentCopy,
-                            contentDescription = "Copy",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
         )
-
         Spacer(modifier = Modifier.height(8.dp))
     }
 }
