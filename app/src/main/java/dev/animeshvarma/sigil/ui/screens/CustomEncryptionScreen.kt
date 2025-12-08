@@ -227,7 +227,9 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
         SecurePasswordInput(
             value = uiState.customPassword,
             onValueChange = { viewModel.onPasswordChanged(it) },
-            onSaveRequested = { viewModel.saveToVault(uiState.customPassword) },
+            onSaveRequested = { name ->
+                viewModel.saveToVault(alias = name, password = uiState.customPassword)
+            },
             vaultEntries = vaultEntries,
             onEntrySelected = { viewModel.loadFromVault(it) },
             modifier = Modifier.fillMaxWidth().height(64.dp)

@@ -254,31 +254,74 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // --- VAULT OPERATIONS ---
-    fun saveToVault(password: String) {
+    fun saveToVault(alias: String, password: String) {
+        if (alias.isBlank()) {
+            addLog("Error: Key name cannot be empty.")
+            return
+        }
         if (password.isEmpty()) {
             addLog("Error: Cannot save empty key.")
             return
         }
-        val entropy = SecureMemory.calculateEntropy(password)
-        val alias = "Key_${System.currentTimeMillis() / 1000}"
-        repository.saveToVault(alias, password, entropy.score, entropy.label)
-        refreshVault()
-        addLog("Key saved to Hardware Vault as '$alias'.")
+
+        _uiState.update { it.copy(isLoading = true) } // SHOW LOADING
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val entropy = SecureMemory.calculateEntropy(password)
+            repository.saveToVault(alias, password, entropy.score, entropy.label)
+            refreshVault()
+            addLog("Key saved to Vault as '$alias'.")
+            _uiState.update { it.copy(isLoading = false) } // HIDE LOADING
+        }
     }
 
     fun loadFromVault(entry: VaultEntry) {
-        val secret = repository.loadFromVault(entry.alias)
-        if (secret != null) {
-            onPasswordChanged(secret)
-            addLog("Key '${entry.alias}' loaded from Secure Storage.")
-        } else {
-            addLog("Error: Failed to decrypt key from Vault.")
+        _uiState.update { it.copy(isLoading = true) } // SHOW LOADING
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val secret = repository.loadFromVault(entry.alias)
+            if (secret != null) {
+                onPasswordChanged(secret)
+                addLog("Key '${entry.alias}' loaded.")
+            } else {
+                addLog("Error: Failed to decrypt key.")
+            }
+            _uiState.update { it.copy(isLoading = false) } // HIDE LOADING
         }
     }
 
     fun deleteFromVault(alias: String) {
-        repository.deleteEntry(alias)
-        refreshVault()
-        addLog("Key '$alias' destroyed.")
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            repository.deleteEntry(alias)
+            refreshVault()
+            addLog("Key '$alias' deleted.")
+            _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    fun renameVaultEntry(oldAlias: String, newAlias: String) {
+        if (newAlias.isBlank()) return
+
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            if (repository.renameEntry(oldAlias, newAlias)) {
+                refreshVault()
+                addLog("Renamed '$oldAlias' to '$newAlias'.")
+            } else {
+                addLog("Error: Rename failed.")
+            }
+            _uiState.update { it.copy(isLoading = false) }
+        }
+    }
+
+    // Helper to view key (decrypts and returns it via callback, doesn't put in UI State)
+    fun viewKey(alias: String, onResult: (String?) -> Unit) {
+        _uiState.update { it.copy(isLoading = true) }
+        viewModelScope.launch(Dispatchers.IO) {
+            val secret = repository.loadFromVault(alias)
+            _uiState.update { it.copy(isLoading = false) }
+            onResult(secret)
+        }
     }
 }

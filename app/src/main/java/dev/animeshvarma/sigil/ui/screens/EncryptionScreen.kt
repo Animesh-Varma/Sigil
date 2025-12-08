@@ -44,7 +44,9 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
         SecurePasswordInput(
             value = uiState.autoPassword,
             onValueChange = { viewModel.onPasswordChanged(it) },
-            onSaveRequested = { viewModel.saveToVault(uiState.autoPassword) },
+            onSaveRequested = { name ->
+                viewModel.saveToVault(alias = name, password = uiState.autoPassword)
+            },
             vaultEntries = vaultEntries,
             onEntrySelected = { viewModel.loadFromVault(it) },
             modifier = Modifier.fillMaxWidth().height(64.dp)
