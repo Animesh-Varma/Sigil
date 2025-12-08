@@ -261,8 +261,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             ),
             trailingIcon = {
-                Column {
-                    // SHARE BUTTON
+                Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
                     IconButton(onClick = {
                         if (uiState.customOutput.isNotEmpty()) {
                             val sendIntent = Intent().apply {
@@ -282,7 +281,6 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                         )
                     }
 
-                    // COPY BUTTON
                     IconButton(onClick = {
                         if (uiState.customOutput.isNotEmpty()) {
                             val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)

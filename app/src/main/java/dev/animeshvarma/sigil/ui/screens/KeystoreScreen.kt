@@ -38,6 +38,9 @@ fun KeystoreScreen(viewModel: SigilViewModel) {
     var entryToRename by remember { mutableStateOf<VaultEntry?>(null) }
     var entryToView by remember { mutableStateOf<VaultEntry?>(null) }
 
+    // Intermediary Warning State
+    var entryToWarn by remember { mutableStateOf<VaultEntry?>(null) }
+
     // Temp variables
     var renameText by remember { mutableStateOf("") }
     var revealedKey by remember { mutableStateOf("") }
@@ -78,7 +81,7 @@ fun KeystoreScreen(viewModel: SigilViewModel) {
                         onView = {
                             viewModel.viewKey(entry.alias) { key ->
                                 revealedKey = key ?: "Error"
-                                entryToView = entry
+                                entryToWarn = entry
                             }
                         }
                     )
@@ -139,7 +142,34 @@ fun KeystoreScreen(viewModel: SigilViewModel) {
         )
     }
 
-    // 3. VIEW KEY DIALOG
+    if (entryToWarn != null) {
+        AlertDialog(
+            onDismissRequest = { entryToWarn = null },
+            icon = { Icon(Icons.Default.Visibility, null) },
+            title = { Text("Reveal Key?") },
+            text = { Text("The raw key will be visible on your screen. Ensure no one is watching.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        // Move to View State
+                        val entry = entryToWarn!!
+                        entryToWarn = null
+
+                        // Decrypt and Show
+                        viewModel.viewKey(entry.alias) { key ->
+                            revealedKey = key ?: "Error"
+                            entryToView = entry
+                        }
+                    }
+                ) { Text("Reveal") }
+            },
+            dismissButton = {
+                TextButton(onClick = { entryToWarn = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // 4. VIEW KEY DIALOG
     if (entryToView != null) {
         val clipboard = LocalClipboardManager.current
         AlertDialog(
@@ -158,8 +188,6 @@ fun KeystoreScreen(viewModel: SigilViewModel) {
                             .padding(16.dp)
                             .fillMaxWidth()
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text("Warning: Ensure no one is looking.", fontSize = 12.sp, color = MaterialTheme.colorScheme.error)
                 }
             },
             confirmButton = {

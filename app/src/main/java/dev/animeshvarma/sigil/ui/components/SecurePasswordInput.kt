@@ -25,7 +25,7 @@ import dev.animeshvarma.sigil.data.VaultEntry
 fun SecurePasswordInput(
     value: String,
     onValueChange: (String) -> Unit,
-    onSaveRequested: (String) -> Unit, // Changed to accept Name
+    onSaveRequested: (String) -> Unit,
     vaultEntries: List<VaultEntry>,
     onEntrySelected: (VaultEntry) -> Unit,
     modifier: Modifier = Modifier
@@ -68,11 +68,11 @@ fun SecurePasswordInput(
                         DropdownMenu(
                             expanded = showMenu,
                             onDismissRequest = { showMenu = false },
-                            offset = DpOffset(x = 10.dp, y = 0.dp), // Slight offset
+                            offset = DpOffset(x = 10.dp, y = 0.dp),
                             modifier = Modifier
                                 .width(240.dp)
                                 .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraLarge),
-                            shape = MaterialTheme.shapes.extraLarge // M3 Expressive Roundness
+                            shape = MaterialTheme.shapes.extraLarge
                         ) {
                             // Header
                             Text(
@@ -91,7 +91,7 @@ fun SecurePasswordInput(
                                 leadingIcon = { Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp)) },
                                 onClick = {
                                     showMenu = false
-                                    newKeyName = "" // Reset
+                                    newKeyName = ""
                                     showNameDialog = true
                                 }
                             )
@@ -111,7 +111,7 @@ fun SecurePasswordInput(
                                     val color = when(entry.strengthLabel) {
                                         "Weak" -> Color(0xFFCF6679)
                                         "Strong" -> Color(0xFF81C784)
-                                        "Paranoid" -> Color(0xFF00E676)
+                                        "Unbreakable" -> Color(0xFF00E676)
                                         else -> Color(0xFFFFD54F)
                                     }
 
@@ -127,6 +127,7 @@ fun SecurePasswordInput(
                                             }
                                         },
                                         onClick = {
+                                            passwordVisible = false
                                             onEntrySelected(entry)
                                             showMenu = false
                                         }

@@ -78,7 +78,9 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
                 unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
             ),
             trailingIcon = {
-                Row {
+                Column(
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
                     IconButton(onClick = {
                         if (uiState.autoOutput.isNotEmpty()) {
                             val sendIntent = Intent().apply {
