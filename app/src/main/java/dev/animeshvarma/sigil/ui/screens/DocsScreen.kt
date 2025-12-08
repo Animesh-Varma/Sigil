@@ -10,7 +10,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -29,7 +28,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -92,7 +90,6 @@ fun DocsContent() {
 }
 
 // --- RELEASES TAB IMPLEMENTATION ---
-
 data class ReleaseData(
     val version: String,
     val title: String,
@@ -108,11 +105,45 @@ data class ReleaseCategory(
 @Composable
 fun ReleasesContent() {
     val releases = listOf(
-        // --- v0.2 (NEWEST) ---
+        // --- v0.3 (THE Keystore UPDATE) ---
+        ReleaseData(
+            version = "v0.3",
+            title = "Keystore Implementation",
+            tag = "Current Build",
+            categories = listOf(
+                ReleaseCategory(
+                    "Security & Storage (Engine v0.9.0)",
+                    listOf(
+                        "Hardware Keystore: Keys are now encrypted via the Android Trusted Execution Environment (TEE).",
+                        "Secure Memory: Implemented aggressive RAM wiping (zeroing out CharArrays) to prevent memory dump attacks.",
+                        "Vault Architecture: Saved keys use a hybrid 'Hardware -> AES -> Twofish -> Serpent' chain.",
+                        "Key Management: View, rename, and delete keys via the new dedicated Keystore tab."
+                    )
+                ),
+                ReleaseCategory(
+                    "User Experience",
+                    listOf(
+                        "Intent Handling: Sigil now accepts text shared directly from external apps (WhatsApp, Signal, etc.).",
+                        "Smart Inputs: Password fields replaced with Secure Vault Dropdowns for one-tap access.",
+                        "Visual Feedback: Output logs now display precise timing and detailed failure diagnosis (HMAC vs Format errors).",
+                        "Safety First: Added confirmation dialogs for deleting or revealing sensitive keys."
+                    )
+                ),
+                ReleaseCategory(
+                    "System & Structure",
+                    listOf(
+                        "Headerless Mode: Added navigation entry for the upcoming raw binary mode.",
+                        "Orientation Lock: Disabled landscape mode to ensure consistent physics stability.",
+                        "Share Integration: Added direct 'Share' button to output fields."
+                    )
+                )
+            )
+        ),
+        // --- v0.2 (PREVIOUS) ---
         ReleaseData(
             version = "v0.2",
-            title = "The Custom Workbench",
-            tag = "Current PR Build",
+            title = "Custom Implementation",
+            tag = "Nov 30, 2025",
             categories = listOf(
                 ReleaseCategory(
                     "User Interface",
@@ -127,49 +158,34 @@ fun ReleasesContent() {
                 ReleaseCategory(
                     "Core Cryptography (Engine v0.8.0)",
                     listOf(
-                        "Engine Fixes: Corrected Block Size and Key Size logic for algorithms like Blowfish and RC6.",
-                        "Compression: Added ZLIB compression toggle (Compression-before-Encryption).",
+                        "Engine Fixes: Corrected Block Size logic for Blowfish/RC6.",
+                        "Compression: Added ZLIB compression toggle.",
                         "Expanded Registry: Added Camellia, SM4, GOST, CAST6, and more.",
-                        "Binary Packing: Optimized the internal container format for variable block sizes."
-                    )
-                ),
-                ReleaseCategory(
-                    "Known Limitations",
-                    listOf(
-                        "Side Modules: All tabs except Home & Release are placeholders.",
-                        "Lackluster optimization: The encryption/decryption, as well as the animations lack proper optimizations."
+                        "Binary Packing: Optimized internal container format."
                     )
                 )
-
             )
         ),
         // --- v0.1 (FOUNDATION) ---
         ReleaseData(
             version = "v0.1",
             title = "The Foundation",
-            tag = "Initial Pre-release",
+            tag = "Nov 26, 2025",
             categories = listOf(
                 ReleaseCategory(
                     "Core Cryptography (Engine v0.7.0)",
                     listOf(
-                        "Initial Encryption implementation: Randomized triple-layer chain (AES->Twofish->Serpent).",
+                        "Initial Encryption implementation: Randomized triple-layer chain.",
                         "Blob Container: Opaque Base64 output with hidden metadata.",
-                        "HMAC Integrity: Encrypt-then-MAC architecture using HKDF-derived keys.",
-                        "Memory Hardening: Argon2id (64MB) + SHA-512 pre-hashing."
+                        "HMAC Integrity: Encrypt-then-MAC architecture.",
+                        "Memory Hardening: Argon2id (64MB)."
                     )
                 ),
                 ReleaseCategory(
                     "User Interface",
                     listOf(
                         "Material 3 Design: Initial UI with dynamic theming.",
-                        "System Console: Dedicated Logs window for auditing steps.",
-                        "Navigation Drawer: Skeleton structure implemented."
-                    )
-                ),
-                ReleaseCategory(
-                    "Known Limitations",
-                    listOf(
-                        "Side Modules: All tabs except Home/Auto are placeholders.",
+                        "System Console: Dedicated Logs window."
                     )
                 )
             )
@@ -185,15 +201,14 @@ fun ReleasesContent() {
         }
     }
 }
+
 @Composable
 fun ReleaseCard(release: ReleaseData, defaultExpanded: Boolean) {
     var expanded by remember { mutableStateOf(defaultExpanded) }
 
-    // Interaction Source to drive the "Squish" animation
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    // Physics: Squish animation
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.97f else 1f,
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
@@ -206,17 +221,17 @@ fun ReleaseCard(release: ReleaseData, defaultExpanded: Boolean) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .scale(scale) // 1. Apply Physics Scale
-            .clip(shape)  // 2. Clip shape
-            .background(MaterialTheme.colorScheme.surface) // 3. Background
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape) // 4. Border
+            .scale(scale)
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surface)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = { expanded = !expanded }
             )
-            .padding(16.dp) // 5. Internal Padding
-            .animateContentSize() // 6. Expand/Collapse Animation
+            .padding(16.dp)
+            .animateContentSize()
     ) {
         Column {
             // Header Row
