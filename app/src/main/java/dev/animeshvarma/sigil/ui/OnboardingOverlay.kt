@@ -125,9 +125,9 @@ fun OnboardingOrchestrator(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Default.Security, null, Modifier.size(80.dp), tint = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.height(32.dp))
-                    Text("SIGIL v0.3", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+                    Text("SIGIL", color = Color.White, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(16.dp))
-                    Text("Zero-Trust Encryption Environment", color = Color.Gray)
+                    Text("A Zero-Trust Encryption Environment", color = Color.Gray)
                     Spacer(Modifier.height(64.dp))
                     Button(
                         onClick = { state = OnboardingState.BASIC_INTRO },
@@ -290,22 +290,22 @@ private fun getPromptBody(state: OnboardingState): String = when(state) {
     OnboardingState.BASIC_ENCRYPT_WAIT -> "Tap Encrypt. Sigil will lock your message with 3 layers of protection.\n\n[AES+Twofish+Serpent in random order]."
     OnboardingState.BASIC_ENCRYPT_DONE -> "Working..."
     OnboardingState.BASIC_OUTPUT -> "This text is now SEALED. The math guarantee that no one — not even a government — can read this without your specific key."
-    OnboardingState.DECRYPT_PREP -> "To read a message, paste the Encrypted Text into the Input box.\n\nTip: You can also share a txt message directly to Sigil."
+    OnboardingState.DECRYPT_PREP -> "To read a message, paste the Encrypted Text into the Input box.\nTip: You can also share a txt message directly to Sigil."
     OnboardingState.DECRYPT_WAIT -> "Enter the password and tap Decrypt."
     OnboardingState.DECRYPT_DONE -> "Done! The message is revealed, but only because you had the right password."
 
     OnboardingState.KEYSTORE_NAV -> "This is the Key Store (Sidebar -> Key Store)."
-    OnboardingState.KEYSTORE_EXPLAIN -> "Keys here are saved in your phone's physical security chip (Trusted Execution Environment or TEE). It's safer than your memory."
+    OnboardingState.KEYSTORE_EXPLAIN -> "Keys are locked in the phone's physical Secure Enclave (TEE), the safest storage on your device.\nWe recommend sharing passwords in-person or via a separate trusted channel.\nCRITICAL: Never send the key and the message on the same platform."
     OnboardingState.KEYSTORE_USAGE -> "You can access these saved keys anytime by tapping the 🔑 icon inside any password field."
 
     OnboardingState.ADV_CUSTOM_INTRO -> "Welcome! This is where you build your own chains."
     OnboardingState.ADV_CUSTOM_LAYERS -> "Select from 15+ industrial algorithms (AES, Twofish, Camellia, GOST, etc)."
-    OnboardingState.ADV_CUSTOM_REORDER -> "You can drag and reorder them. Watch Layer 1 and 2 swap positions..."
+    OnboardingState.ADV_CUSTOM_REORDER -> "You can click the arrowheads to reorder them. Try this later after adding more algorithms with the (+) button..."
     OnboardingState.ADV_BLOB_EXPLAIN -> "How it works:\n\n[Header: Algo Order] + [Salt] + [IVs] + [Encrypted Data] + [HMAC Signature]\n\nAuto Mode reads the Header to know how to decrypt your Custom chains automatically."
 
     OnboardingState.ADV_LOGS_PREP -> "Sigil maintains a real-time system console. You can audit every encryption step, timing metric, and key derivation."
     OnboardingState.ADV_LOGS_VIEW -> "Here you see the live data from the encryption we just performed. Nothing is hidden."
-    OnboardingState.ADV_RELEASES -> "We hide nothing. This tab shows every code change, audit, and security patch."
+    OnboardingState.ADV_RELEASES -> "This tab shows every major update; minor changes can be seen on the GitHub repo or Play Store release notes."
     else -> ""
 }
 

@@ -33,6 +33,7 @@ import dev.animeshvarma.sigil.ui.screens.CustomEncryptionScreen
 import dev.animeshvarma.sigil.ui.screens.DocsScreen
 import dev.animeshvarma.sigil.ui.screens.EncryptionInterface
 import dev.animeshvarma.sigil.ui.screens.KeystoreScreen
+import dev.animeshvarma.sigil.ui.screens.SettingsScreen
 import dev.animeshvarma.sigil.ui.screens.SteganographyScreen
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 import kotlinx.coroutines.launch
@@ -114,6 +115,7 @@ fun SigilApp(
                             AppScreen.DOCS -> DocsScreen()
                             AppScreen.STEGANOGRAPHY -> SteganographyScreen()
                             AppScreen.KEYSTORE -> KeystoreScreen(viewModel)
+                            AppScreen.SETTINGS -> SettingsScreen(viewModel)
                             AppScreen.HEADERLESS,
                             AppScreen.FILE_ENCRYPTION,
                             AppScreen.ASYMMETRIC,

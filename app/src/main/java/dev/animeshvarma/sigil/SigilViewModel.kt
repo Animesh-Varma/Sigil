@@ -11,6 +11,7 @@ import dev.animeshvarma.sigil.model.LayerEntry
 import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.util.SecureMemory
+import dev.animeshvarma.sigil.util.SigilPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ import java.util.Locale
 class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
     private val repository = KeystoreRepository(application)
+    private val prefs = SigilPreferences(application)
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
@@ -398,5 +400,20 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             VaultEntry("Key 2", System.currentTimeMillis() - 1000000, 75, "Strong"),
             VaultEntry("Key 3", System.currentTimeMillis() - 5000000, 40, "Moderate")
         )
+    }
+
+    // --- SETTINGS OPERATIONS ---
+
+    fun isOnboardingReset(): Boolean {
+        return !prefs.hasCompletedOnboarding()
+    }
+
+    fun setOnboardingReset(reset: Boolean) {
+        prefs.setOnboardingCompleted(!reset)
+        if (reset) {
+            addLog("Onboarding enabled for next session.")
+        } else {
+            addLog("Onboarding disabled.")
+        }
     }
 }
