@@ -95,9 +95,11 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
     fun addLayer(algo: CryptoEngine.Algorithm) {
         _uiState.update { it.copy(customLayers = it.customLayers + LayerEntry(algorithm = algo)) }
     }
+
     fun addLayers(algos: List<CryptoEngine.Algorithm>) {
         _uiState.update { it.copy(customLayers = it.customLayers + algos.map { LayerEntry(algorithm = it) }) }
     }
+
     fun removeLayer(index: Int) {
         val mutable = _uiState.value.customLayers.toMutableList()
         if (index in mutable.indices) {
@@ -105,6 +107,7 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(customLayers = mutable) }
         }
     }
+
     fun moveLayer(fromIndex: Int, toIndex: Int) {
         val list = _uiState.value.customLayers.toMutableList()
         if (fromIndex in list.indices && toIndex in list.indices) {
@@ -113,6 +116,7 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(customLayers = list) }
         }
     }
+
     fun toggleCompression(enabled: Boolean) {
         _uiState.update { it.copy(isCompressionEnabled = enabled) }
     }
@@ -128,7 +132,8 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
     // --- CRYPTO OPERATIONS ---
     fun onEncrypt() {
         val state = _uiState.value
-        val pwdString = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
+        val pwdString =
+            if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
         val input = if (state.selectedMode == SigilMode.AUTO) state.autoInput else state.customInput
 
         if (pwdString.isEmpty()) {
@@ -169,7 +174,10 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = result, isLoading = false)
+                    if (it.selectedMode == SigilMode.AUTO) it.copy(
+                        autoOutput = result,
+                        isLoading = false
+                    )
                     else it.copy(customOutput = result, isLoading = false)
                 }
             } catch (e: Exception) {
@@ -184,7 +192,8 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onDecrypt() {
         val state = _uiState.value
-        val pwdString = if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
+        val pwdString =
+            if (state.selectedMode == SigilMode.AUTO) state.autoPassword else state.customPassword
         val input = if (state.selectedMode == SigilMode.AUTO) state.autoInput else state.customInput
 
         if (pwdString.isEmpty()) {
@@ -209,7 +218,10 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                 )
 
                 _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = decrypted, isLoading = false)
+                    if (it.selectedMode == SigilMode.AUTO) it.copy(
+                        autoOutput = decrypted,
+                        isLoading = false
+                    )
                     else it.copy(customOutput = decrypted, isLoading = false)
                 }
 
@@ -228,6 +240,7 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                         errorReport.append("1. Wrong password (Try typing the password again)\n")
                         errorReport.append("2. The text was tampered with.\n")
                     }
+
                     "Container Corrupted or Invalid Format.",
                     "Data corrupted (Size too small)." -> {
                         errorReport.append("Reason: Invalid Data Format.\n\n")
@@ -235,6 +248,7 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                         errorReport.append("1. Missing characters in input.\n")
                         errorReport.append("2. Input is not a Sigil-encrypted string.\n")
                     }
+
                     else -> {
                         errorReport.append("Reason: System Error.\n")
                         errorReport.append("Details: $errorMsg\n")
@@ -244,7 +258,10 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                 val finalMessage = errorReport.toString()
 
                 _uiState.update {
-                    if (it.selectedMode == SigilMode.AUTO) it.copy(autoOutput = finalMessage, isLoading = false)
+                    if (it.selectedMode == SigilMode.AUTO) it.copy(
+                        autoOutput = finalMessage,
+                        isLoading = false
+                    )
                     else it.copy(customOutput = finalMessage, isLoading = false)
                 }
             } finally {
@@ -324,14 +341,42 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // --- DEMO / ONBOARDING CONTROL ---
+// --- DEMO / ONBOARDING CONTROL ---
+
+    // 1. Control the Docs Tab programmatically
+    private val _demoDocsTabIndex = MutableStateFlow(0)
+    val demoDocsTabIndex: StateFlow<Int> = _demoDocsTabIndex
+
     fun setDemoMode(active: Boolean) {
         if (!active) {
             clearSensitiveData()
             refreshVault()
+            toggleDemoDropdown(false)
+        } else {
+            _demoDocsTabIndex.value = 0
         }
     }
 
+    fun toggleDemoDropdown(show: Boolean) {
+        _uiState.update { it.copy(isDemoDropdownExpanded = show) }
+    }
+
+    fun setDocsTab(index: Int) {
+        _demoDocsTabIndex.value = index
+    }
+
+    // 2. Simulate Layer Reordering for Advanced Demo
+    fun demoSwapLayers() {
+        val current = _uiState.value.customLayers.toMutableList()
+        if (current.size >= 2) {
+            val temp = current[0]
+            current[0] = current[1]
+            current[1] = temp
+            _uiState.update { it.copy(customLayers = current) }
+        }
+    }
+
+    // 3. Inject Fake Data
     fun injectDemoData(input: String, pass: String, output: String = "") {
         _uiState.update {
             it.copy(
@@ -346,9 +391,9 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
     fun injectDemoVault() {
         _vaultEntries.value = listOf(
-            VaultEntry("Master Banking Key", System.currentTimeMillis(), 100, "Paranoid"),
-            VaultEntry("Social Media", System.currentTimeMillis() - 1000000, 75, "Strong"),
-            VaultEntry("Gym Wifi", System.currentTimeMillis() - 5000000, 20, "Weak")
+            VaultEntry("Key 1", System.currentTimeMillis(), 100, "Unbreakable"),
+            VaultEntry("Key 2", System.currentTimeMillis() - 1000000, 75, "Strong"),
+            VaultEntry("Key 3", System.currentTimeMillis() - 5000000, 40, "Moderate")
         )
     }
 }

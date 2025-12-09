@@ -101,10 +101,10 @@ fun VaultItem(entry: VaultEntry, onDelete: () -> Unit, onRename: () -> Unit, onV
 
     // Entropy Logic
     val strengthColor = when(entry.strengthLabel) {
-        "Paranoid" -> Color(0xFF00E676)
+        "Unbreakable" -> Color(0xFF00E676) // Bright Green
         "Strong" -> Color(0xFF81C784)
         "Weak" -> Color(0xFFCF6679)
-        else -> Color(0xFFFFD54F) // Moderate
+        else -> Color(0xFFFFD54F)
     }
     val strengthFraction = (entry.strengthScore / 100f).coerceIn(0.1f, 1f)
 

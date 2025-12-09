@@ -28,12 +28,17 @@ fun SecurePasswordInput(
     onSaveRequested: (String) -> Unit,
     vaultEntries: List<VaultEntry>,
     onEntrySelected: (VaultEntry) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    forceDropdownExpanded: Boolean = false
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
     var showMenu by remember { mutableStateOf(false) }
     var showNameDialog by remember { mutableStateOf(false) }
     var newKeyName by remember { mutableStateOf("") }
+
+    LaunchedEffect(forceDropdownExpanded) {
+        if (forceDropdownExpanded) showMenu = true
+    }
 
     Box(modifier = modifier) {
         OutlinedTextField(

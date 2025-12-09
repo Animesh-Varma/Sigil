@@ -49,7 +49,8 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
             },
             vaultEntries = vaultEntries,
             onEntrySelected = { viewModel.loadFromVault(it) },
-            modifier = Modifier.fillMaxWidth().height(64.dp)
+            modifier = Modifier.fillMaxWidth().height(64.dp),
+            forceDropdownExpanded = uiState.isDemoDropdownExpanded
         )
 
         Spacer(modifier = Modifier.height(18.dp))

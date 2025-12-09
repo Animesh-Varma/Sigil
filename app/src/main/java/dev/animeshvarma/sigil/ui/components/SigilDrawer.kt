@@ -17,9 +17,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.filled.VisibilityOff
 import dev.animeshvarma.sigil.model.AppScreen
 
 @Composable
@@ -32,12 +29,13 @@ fun SigilDrawerContent(
     ModalDrawerSheet(
         modifier = Modifier.width(300.dp),
         drawerContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-        drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp)
+        drawerShape = RoundedCornerShape(topEnd = 16.dp, bottomEnd = 16.dp),
+        windowInsets = WindowInsets(0)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp, horizontal = 16.dp)
+                .padding(16.dp)
         ) {
             Text(
                 text = "Sigil",
@@ -170,7 +168,7 @@ fun DrawerItem(
             .fillMaxWidth()
             .padding(vertical = 2.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick), // Removed bounceClick
+            .clickable(onClick = onClick),
         color = background
     ) {
         Row(

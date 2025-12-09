@@ -34,11 +34,21 @@ import androidx.compose.ui.unit.dp
 import dev.animeshvarma.sigil.ui.components.SigilSegmentedControl
 import dev.animeshvarma.sigil.ui.components.UnderConstructionView
 import dev.animeshvarma.sigil.ui.theme.AnimationConfig
+import dev.animeshvarma.sigil.SigilViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DocsScreen() {
+fun DocsScreen(
+    viewModel: SigilViewModel = viewModel()
+) {
+    val demoTab by viewModel.demoDocsTabIndex.collectAsState()
     var selectedTabIndex by remember { mutableIntStateOf(0) }
+    LaunchedEffect(demoTab) {
+        if (demoTab != selectedTabIndex) selectedTabIndex = demoTab
+    }
     val tabs = listOf("Docs", "Releases")
 
     Column(
