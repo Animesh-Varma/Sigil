@@ -35,11 +35,11 @@ fun SigilDrawerContent(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(vertical = 23.dp, horizontal = 16.dp)
         ) {
             Text(
                 text = "Sigil",
-                fontSize = 20.sp,
+                fontSize = 22.sp,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurface
             )

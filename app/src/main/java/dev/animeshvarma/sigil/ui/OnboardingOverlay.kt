@@ -27,7 +27,8 @@ enum class OnboardingState {
     FORK_SELECTION,
     ADV_CUSTOM_INTRO, ADV_CUSTOM_LAYERS, ADV_CUSTOM_REORDER,
     ADV_BLOB_EXPLAIN,
-    ADV_LOGS,
+    ADV_LOGS_PREP,
+    ADV_LOGS_VIEW,
     ADV_RELEASES,
     FINISHED
 }
@@ -93,16 +94,15 @@ fun OnboardingOrchestrator(
             }
 
             // Logs Step
-            OnboardingState.ADV_LOGS -> {
-                if (!viewModel.uiState.value.showLogsDialog) {
-                    viewModel.onLogsClicked()
-                }
+            OnboardingState.ADV_LOGS_PREP -> {
+                if (viewModel.uiState.value.showLogsDialog) viewModel.onLogsClicked()
+            }
+            OnboardingState.ADV_LOGS_VIEW -> {
+                if (!viewModel.uiState.value.showLogsDialog) viewModel.onLogsClicked()
             }
 
             OnboardingState.ADV_RELEASES -> {
-                if (viewModel.uiState.value.showLogsDialog) {
-                    viewModel.onLogsClicked()
-                }
+                if (viewModel.uiState.value.showLogsDialog) viewModel.onLogsClicked()
                 viewModel.onScreenSelected(AppScreen.DOCS)
                 viewModel.setDocsTab(1)
             }
@@ -169,8 +169,9 @@ fun OnboardingOrchestrator(
                     OnboardingState.ADV_CUSTOM_LAYERS -> OnboardingState.ADV_CUSTOM_REORDER
                     OnboardingState.ADV_CUSTOM_REORDER -> OnboardingState.ADV_BLOB_EXPLAIN
 
-                    OnboardingState.ADV_BLOB_EXPLAIN -> OnboardingState.ADV_LOGS
-                    OnboardingState.ADV_LOGS -> OnboardingState.ADV_RELEASES
+                    OnboardingState.ADV_BLOB_EXPLAIN -> OnboardingState.ADV_LOGS_PREP
+                    OnboardingState.ADV_LOGS_PREP -> OnboardingState.ADV_LOGS_VIEW
+                    OnboardingState.ADV_LOGS_VIEW -> OnboardingState.ADV_RELEASES
 
                     OnboardingState.ADV_RELEASES -> OnboardingState.FINISHED
                     else -> OnboardingState.FINISHED
@@ -188,15 +189,14 @@ fun PromptOverlay(state: OnboardingState, onNext: () -> Unit) {
         OnboardingState.BASIC_PASS,
         OnboardingState.DECRYPT_PREP,
         OnboardingState.DECRYPT_WAIT,
-            // Keystore & Advanced Bottom
         OnboardingState.KEYSTORE_NAV,
         OnboardingState.KEYSTORE_EXPLAIN,
         OnboardingState.KEYSTORE_USAGE,
         OnboardingState.ADV_CUSTOM_INTRO,
         OnboardingState.ADV_CUSTOM_LAYERS,
         OnboardingState.ADV_CUSTOM_REORDER,
-            // Logs & Releases Bottom
-        OnboardingState.ADV_LOGS,
+        OnboardingState.ADV_LOGS_PREP,
+        OnboardingState.ADV_LOGS_VIEW,
         OnboardingState.ADV_RELEASES -> Alignment.BottomCenter
 
         // Top Group
@@ -248,6 +248,7 @@ fun PromptOverlay(state: OnboardingState, onNext: () -> Unit) {
                         val label = when(state) {
                             OnboardingState.BASIC_ENCRYPT_WAIT -> "Encrypt"
                             OnboardingState.DECRYPT_WAIT -> "Decrypt"
+                            OnboardingState.ADV_LOGS_PREP -> "Open Logs"
                             OnboardingState.ADV_RELEASES -> "Finish"
                             else -> "Next"
                         }
@@ -276,24 +277,25 @@ private fun getPromptTitle(state: OnboardingState): String = when(state) {
     OnboardingState.ADV_CUSTOM_LAYERS -> "The Algorithms"
     OnboardingState.ADV_CUSTOM_REORDER -> "Total Control"
     OnboardingState.ADV_BLOB_EXPLAIN -> "Anatomy of a Blob"
-    OnboardingState.ADV_LOGS -> "System Console"
+    OnboardingState.ADV_LOGS_PREP -> "System Console"
+    OnboardingState.ADV_LOGS_VIEW -> "Live Audit"
     OnboardingState.ADV_RELEASES -> "Transparency"
     else -> ""
 }
 
 private fun getPromptBody(state: OnboardingState): String = when(state) {
-    OnboardingState.BASIC_INTRO -> "This is your workspace. Sigil keeps it simple: Input, Password, Output."
+    OnboardingState.BASIC_INTRO -> "This is your workspace. Sigil is simple: you type, set a password, and get protected text."
     OnboardingState.BASIC_INPUT -> "Type your message here."
-    OnboardingState.BASIC_PASS -> "Set a password.\n(Demo Password: BlueHorse)\n\nTip: You can verify it by looking at the text field."
-    OnboardingState.BASIC_ENCRYPT_WAIT -> "Tap Encrypt. Sigil will randomize 3 layers of encryption (AES+Twofish+Serpent)."
-    OnboardingState.BASIC_ENCRYPT_DONE -> "Calculating..."
-    OnboardingState.BASIC_OUTPUT -> "This text is now LOCKED. No one, not even the government can read it without the key you just set."
-    OnboardingState.DECRYPT_PREP -> "To read a message, paste the Encrypted Text into the Input box."
+    OnboardingState.BASIC_PASS -> "Choose a password.\n(Demo Password: BlueHorse)\n\nTip: Use the eye icon to quickly check what you typed."
+    OnboardingState.BASIC_ENCRYPT_WAIT -> "Tap Encrypt. Sigil will lock your message with 3 layers of protection.\n\n[AES+Twofish+Serpent in random order]."
+    OnboardingState.BASIC_ENCRYPT_DONE -> "Working..."
+    OnboardingState.BASIC_OUTPUT -> "This text is now SEALED. The math guarantee that no one — not even a government — can read this without your specific key."
+    OnboardingState.DECRYPT_PREP -> "To read a message, paste the Encrypted Text into the Input box.\n\nTip: You can also share a txt message directly to Sigil."
     OnboardingState.DECRYPT_WAIT -> "Enter the password and tap Decrypt."
-    OnboardingState.DECRYPT_DONE -> "The message is revealed! The math guarantees only the password holder can see this."
+    OnboardingState.DECRYPT_DONE -> "Done! The message is revealed, but only because you had the right password."
 
     OnboardingState.KEYSTORE_NAV -> "This is the Key Store (Sidebar -> Key Store)."
-    OnboardingState.KEYSTORE_EXPLAIN -> "Keys here are saved in your phone's physical security chip (TEE). It's safer than your brain."
+    OnboardingState.KEYSTORE_EXPLAIN -> "Keys here are saved in your phone's physical security chip (Trusted Execution Environment or TEE). It's safer than your memory."
     OnboardingState.KEYSTORE_USAGE -> "You can access these saved keys anytime by tapping the 🔑 icon inside any password field."
 
     OnboardingState.ADV_CUSTOM_INTRO -> "Welcome! This is where you build your own chains."
@@ -301,7 +303,8 @@ private fun getPromptBody(state: OnboardingState): String = when(state) {
     OnboardingState.ADV_CUSTOM_REORDER -> "You can drag and reorder them. Watch Layer 1 and 2 swap positions..."
     OnboardingState.ADV_BLOB_EXPLAIN -> "How it works:\n\n[Header: Algo Order] + [Salt] + [IVs] + [Encrypted Data] + [HMAC Signature]\n\nAuto Mode reads the Header to know how to decrypt your Custom chains automatically."
 
-    OnboardingState.ADV_LOGS -> "The 'Logs' button opens the real-time system console. You can audit every encryption step, timing metric, and algorithm choice here."
+    OnboardingState.ADV_LOGS_PREP -> "Sigil maintains a real-time system console. You can audit every encryption step, timing metric, and key derivation."
+    OnboardingState.ADV_LOGS_VIEW -> "Here you see the live data from the encryption we just performed. Nothing is hidden."
     OnboardingState.ADV_RELEASES -> "We hide nothing. This tab shows every code change, audit, and security patch."
     else -> ""
 }

@@ -81,14 +81,14 @@ fun SecurePasswordInput(
                         ) {
                             // Header
                             Text(
-                                "Sigil Vault",
+                                "Keystore",
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                fontSize = 12.sp,
+                                fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.primary
                             )
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 3.dp))
 
                             // Save Option
                             DropdownMenuItem(
@@ -101,7 +101,7 @@ fun SecurePasswordInput(
                                 }
                             )
 
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
 
                             // Key List
                             if (vaultEntries.isEmpty()) {
@@ -123,7 +123,8 @@ fun SecurePasswordInput(
                                     DropdownMenuItem(
                                         text = {
                                             Column {
-                                                Text(entry.alias, fontWeight = FontWeight.Medium)
+                                                Text(entry.alias,
+                                                    fontWeight = FontWeight.Medium)
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                                     Box(Modifier.size(6.dp).background(color, androidx.compose.foundation.shape.CircleShape))
                                                     Spacer(Modifier.width(4.dp))
