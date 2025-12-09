@@ -286,7 +286,7 @@ private fun getPromptTitle(state: OnboardingState): String = when(state) {
 private fun getPromptBody(state: OnboardingState): String = when(state) {
     OnboardingState.BASIC_INTRO -> "This is your workspace. Sigil is simple: you type, set a password, and get protected text."
     OnboardingState.BASIC_INPUT -> "Type your message here."
-    OnboardingState.BASIC_PASS -> "Choose a password.\n(Demo Password: BlueHorse)\n\nTip: Use the eye icon to quickly check what you typed."
+    OnboardingState.BASIC_PASS -> "Choose a password.\n(Demo Password: BlueHorse)\nTip: Use the eye icon to quickly check what you typed."
     OnboardingState.BASIC_ENCRYPT_WAIT -> "Tap Encrypt. Sigil will lock your message with 3 layers of protection.\n\n[AES+Twofish+Serpent in random order]."
     OnboardingState.BASIC_ENCRYPT_DONE -> "Working..."
     OnboardingState.BASIC_OUTPUT -> "This text is now SEALED. The math guarantee that no one — not even a government — can read this without your specific key."

@@ -26,7 +26,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// --- STATEFUL HOST ---
 @Composable
 fun KeystoreScreen(viewModel: SigilViewModel) {
     val entries by viewModel.vaultEntries.collectAsState()
@@ -40,7 +39,6 @@ fun KeystoreScreen(viewModel: SigilViewModel) {
     )
 }
 
-// --- STATELESS UI ---
 @Composable
 fun KeystoreContent(
     entries: List<VaultEntry>,
@@ -90,9 +88,100 @@ fun KeystoreContent(
         }
     }
 
-    // ... [Dialog implementations (Delete, Rename, Warn, View) remain identical to previous] ...
-    // (Omitted for brevity, paste from previous V3 KeystoreScreen logic)
-    // Ensure you keep the Dialogs here!
+    // --- RESTORED DIALOG LOGIC ---
+
+    // 1. DELETE CONFIRMATION
+    if (entryToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { entryToDelete = null },
+            title = { Text("Delete Key?") },
+            text = { Text("Are you sure you want to destroy '${entryToDelete?.alias}'?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        entryToDelete?.let { onDelete(it.alias) }
+                        entryToDelete = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = { TextButton(onClick = { entryToDelete = null }) { Text("Cancel") } }
+        )
+    }
+
+    // 2. RENAME DIALOG
+    if (entryToRename != null) {
+        AlertDialog(
+            onDismissRequest = { entryToRename = null },
+            title = { Text("Rename Key") },
+            text = {
+                OutlinedTextField(
+                    value = renameText,
+                    onValueChange = { renameText = it },
+                    label = { Text("Name") },
+                    singleLine = true
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (renameText.isNotBlank() && entryToRename != null) {
+                        onRename(entryToRename!!.alias, renameText)
+                        entryToRename = null
+                    }
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { entryToRename = null }) { Text("Cancel") } }
+        )
+    }
+
+    // 3. SECURITY WARNING
+    if (entryToWarn != null) {
+        AlertDialog(
+            onDismissRequest = { entryToWarn = null },
+            icon = { Icon(Icons.Default.Visibility, null) },
+            title = { Text("Reveal Key?") },
+            text = { Text("The raw key will be visible. Ensure no one is watching.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    val entry = entryToWarn!!
+                    entryToWarn = null
+                    onView(entry.alias) { key ->
+                        revealedKey = key ?: "Error"
+                        entryToView = entry
+                    }
+                }) { Text("Reveal") }
+            },
+            dismissButton = { TextButton(onClick = { entryToWarn = null }) { Text("Cancel") } }
+        )
+    }
+
+    // 4. VIEW KEY
+    if (entryToView != null) {
+        val clipboard = LocalClipboardManager.current
+        AlertDialog(
+            onDismissRequest = { entryToView = null; revealedKey = "" },
+            title = { Text("Key: ${entryToView?.alias}") },
+            text = {
+                Column {
+                    Text(
+                        text = revealedKey,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier
+                            .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(8.dp))
+                            .padding(16.dp)
+                            .fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    clipboard.setText(AnnotatedString(revealedKey))
+                    onLog("Key copied to clipboard.")
+                }) { Text("Copy") }
+            },
+            dismissButton = { TextButton(onClick = { entryToView = null; revealedKey = "" }) { Text("Close") } }
+        )
+    }
 }
 
 @Composable
@@ -101,7 +190,7 @@ fun VaultItem(entry: VaultEntry, onDelete: () -> Unit, onRename: () -> Unit, onV
 
     // Entropy Logic
     val strengthColor = when(entry.strengthLabel) {
-        "Unbreakable" -> Color(0xFF00E676) // Bright Green
+        "Unbreakable" -> Color(0xFF00E676)
         "Strong" -> Color(0xFF81C784)
         "Weak" -> Color(0xFFCF6679)
         else -> Color(0xFFFFD54F)
@@ -115,9 +204,7 @@ fun VaultItem(entry: VaultEntry, onDelete: () -> Unit, onRename: () -> Unit, onV
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(entry.alias, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-
                 Spacer(Modifier.height(4.dp))
-
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.height(4.dp).width(60.dp).background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(2.dp))) {
                         Box(Modifier.fillMaxHeight().fillMaxWidth(strengthFraction).background(strengthColor, RoundedCornerShape(2.dp)))

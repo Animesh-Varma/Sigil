@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -337,7 +338,9 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val secret = repository.loadFromVault(alias)
             _uiState.update { it.copy(isLoading = false) }
-            onResult(secret)
+            withContext(Dispatchers.Main) {
+                onResult(secret)
+            }
         }
     }
 

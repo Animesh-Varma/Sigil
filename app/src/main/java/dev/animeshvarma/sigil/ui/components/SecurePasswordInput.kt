@@ -93,7 +93,7 @@ fun SecurePasswordInput(
                             // Save Option
                             DropdownMenuItem(
                                 text = { Text("Save Current Key") },
-                                leadingIcon = { Icon(Icons.Default.Save, null, modifier = Modifier.size(18.dp)) },
+                                leadingIcon = { Icon(Icons.Default.Save, null, modifier = Modifier.size(16.dp)) },
                                 onClick = {
                                     showMenu = false
                                     newKeyName = ""
@@ -102,12 +102,13 @@ fun SecurePasswordInput(
                             )
 
                             HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
 
                             // Key List
                             if (vaultEntries.isEmpty()) {
                                 Text(
                                     "No saved keys found.",
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     fontSize = 13.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
