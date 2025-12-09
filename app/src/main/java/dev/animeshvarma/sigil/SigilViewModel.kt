@@ -264,19 +264,19 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        _uiState.update { it.copy(isLoading = true) } // SHOW LOADING
+        _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch(Dispatchers.IO) {
             val entropy = SecureMemory.calculateEntropy(password)
             repository.saveToVault(alias, password, entropy.score, entropy.label)
             refreshVault()
             addLog("Key saved to Vault as '$alias'.")
-            _uiState.update { it.copy(isLoading = false) } // HIDE LOADING
+            _uiState.update { it.copy(isLoading = false) }
         }
     }
 
     fun loadFromVault(entry: VaultEntry) {
-        _uiState.update { it.copy(isLoading = true) } // SHOW LOADING
+        _uiState.update { it.copy(isLoading = true) }
 
         viewModelScope.launch(Dispatchers.IO) {
             val secret = repository.loadFromVault(entry.alias)
@@ -315,7 +315,6 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Helper to view key (decrypts and returns it via callback, doesn't put in UI State)
     fun viewKey(alias: String, onResult: (String?) -> Unit) {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch(Dispatchers.IO) {
@@ -323,5 +322,33 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             _uiState.update { it.copy(isLoading = false) }
             onResult(secret)
         }
+    }
+
+    // --- DEMO / ONBOARDING CONTROL ---
+    fun setDemoMode(active: Boolean) {
+        if (!active) {
+            clearSensitiveData()
+            refreshVault()
+        }
+    }
+
+    fun injectDemoData(input: String, pass: String, output: String = "") {
+        _uiState.update {
+            it.copy(
+                autoInput = input,
+                autoPassword = pass,
+                autoOutput = output,
+                customInput = input,
+                customPassword = pass
+            )
+        }
+    }
+
+    fun injectDemoVault() {
+        _vaultEntries.value = listOf(
+            VaultEntry("Master Banking Key", System.currentTimeMillis(), 100, "Paranoid"),
+            VaultEntry("Social Media", System.currentTimeMillis() - 1000000, 75, "Strong"),
+            VaultEntry("Gym Wifi", System.currentTimeMillis() - 5000000, 20, "Weak")
+        )
     }
 }
