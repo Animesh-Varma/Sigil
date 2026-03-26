@@ -90,10 +90,8 @@ class MainActivity : AppCompatActivity() {
         val isFirstLaunch = !prefs.hasCompletedOnboarding()
         val showOnboarding = mutableStateOf(isFirstLaunch)
 
-        if (isFirstLaunch && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            if (prefs.isDarkModeEnabled) {
-                viewModel.setDarkMode(false)
-            }
+        if (isFirstLaunch && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && prefs.isDarkModeEnabled) {
+            viewModel.setDarkMode(false)
         }
 
         checkAndProcessIntent(intent, viewModel)

@@ -51,12 +51,12 @@ fun SigilTheme(
                     onPrimaryContainer = actualSeed,
 
                     secondary = actualSeed,
-                    onSecondary = Color.Black,
+                    onSecondary = if (isSeedWhite) Color.Black else Color.White,
                     secondaryContainer = actualSeed.copy(alpha = 0.2f),
                     onSecondaryContainer = actualSeed,
 
                     tertiary = actualSeed,
-                    onTertiary = Color.Black,
+                    onTertiary = if (isSeedWhite) Color.Black else Color.White,
                     tertiaryContainer = actualSeed.copy(alpha = 0.2f),
                     onTertiaryContainer = actualSeed,
 
@@ -106,8 +106,8 @@ fun SigilTheme(
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
-            val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).apply {
+            val activity = view.context as? Activity ?: return@SideEffect
+            WindowCompat.getInsetsController(activity.window, view).apply {
                 isAppearanceLightStatusBars = !darkTheme
                 isAppearanceLightNavigationBars = !darkTheme
             }

@@ -107,7 +107,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
 
     // Appearance State
     var dynamicColors by remember {
-        mutableStateOf(if (supportsDynamicColor) prefs.isDynamicColorsEnabled else false)
+        mutableStateOf(supportsDynamicColor && prefs.isDynamicColorsEnabled)
     }
     var darkMode by remember { mutableStateOf(prefs.isDarkModeEnabled) }
     var selectedColorInt by remember { mutableIntStateOf(prefs.selectedThemeColor) }
