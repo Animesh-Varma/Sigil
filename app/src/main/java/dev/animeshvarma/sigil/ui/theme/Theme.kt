@@ -1,11 +1,15 @@
 package dev.animeshvarma.sigil.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
@@ -35,28 +39,28 @@ fun SigilTheme(
 
         // 2. Custom Seed Color - "Standardized" Propagation
         seedColor != null -> {
-            val seed = Color(seedColor)
+            val isSeedWhite = seedColor == 0xFFFFFFFF.toInt()
+
+            val actualSeed = if (!darkTheme && isSeedWhite) Color.Black else Color(seedColor)
 
             if (darkTheme) {
                 darkColorScheme(
-                    // Main Accents
-                    primary = seed,
-                    onPrimary = Color.Black, // High contrast on the colored button
-                    primaryContainer = seed.copy(alpha = 0.3f),
-                    onPrimaryContainer = seed, // Text inside container matches seed
+                    primary = actualSeed,
+                    onPrimary = if (isSeedWhite) Color.Black else Color.White,
+                    primaryContainer = actualSeed.copy(alpha = 0.3f),
+                    onPrimaryContainer = actualSeed,
 
-                    secondary = seed,
+                    secondary = actualSeed,
                     onSecondary = Color.Black,
-                    secondaryContainer = seed.copy(alpha = 0.2f),
-                    onSecondaryContainer = seed,
+                    secondaryContainer = actualSeed.copy(alpha = 0.2f),
+                    onSecondaryContainer = actualSeed,
 
-                    tertiary = seed,
+                    tertiary = actualSeed,
                     onTertiary = Color.Black,
-                    tertiaryContainer = seed.copy(alpha = 0.2f),
-                    onTertiaryContainer = seed,
+                    tertiaryContainer = actualSeed.copy(alpha = 0.2f),
+                    onTertiaryContainer = actualSeed,
 
-                    // Backgrounds
-                    background = Color(0xFF121212), // Deep black-grey
+                    background = Color(0xFF121212),
                     surface = Color(0xFF1E1E1E),
                     surfaceVariant = Color(0xFF2C2C2C),
                     onSurface = Color.White,
@@ -65,32 +69,31 @@ fun SigilTheme(
                     surfaceContainerLow = Color(0xFF1A1A1A),
                     surfaceContainerHigh = Color(0xFF252525),
 
-                    // Borders
-                    outline = seed.copy(alpha = 0.6f),
-                    outlineVariant = seed.copy(alpha = 0.3f)
+                    outline = actualSeed.copy(alpha = 0.6f),
+                    outlineVariant = actualSeed.copy(alpha = 0.3f)
                 )
             } else {
                 lightColorScheme(
-                    primary = seed,
+                    primary = actualSeed,
                     onPrimary = Color.White,
-                    primaryContainer = seed.copy(alpha = 0.2f),
-                    onPrimaryContainer = Color.Black, // Dark text for contrast on light container
+                    primaryContainer = actualSeed.copy(alpha = 0.2f),
+                    onPrimaryContainer = Color.Black,
 
-                    secondary = seed,
+                    secondary = actualSeed,
                     onSecondary = Color.White,
-                    secondaryContainer = seed.copy(alpha = 0.1f),
+                    secondaryContainer = actualSeed.copy(alpha = 0.1f),
                     onSecondaryContainer = Color.Black,
 
-                    tertiary = seed,
+                    tertiary = actualSeed,
                     onTertiary = Color.White,
-                    tertiaryContainer = seed.copy(alpha = 0.1f),
+                    tertiaryContainer = actualSeed.copy(alpha = 0.1f),
                     onTertiaryContainer = Color.Black,
 
                     background = Color(0xFFFFFBFE),
                     surface = Color(0xFFFFFBFE),
                     onSurface = Color.Black,
 
-                    outline = seed.copy(alpha = 0.5f)
+                    outline = actualSeed.copy(alpha = 0.5f)
                 )
             }
         }
@@ -98,6 +101,17 @@ fun SigilTheme(
         // 3. Fallback Defaults
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as Activity).window
+            WindowCompat.getInsetsController(window, view).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
     }
 
     MaterialTheme(
