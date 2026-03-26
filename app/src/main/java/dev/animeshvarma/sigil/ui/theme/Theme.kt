@@ -45,21 +45,23 @@ fun SigilTheme(
             val actualSeed = if (!darkTheme && isSeedWhite) Color.Black else Color(seedColor)
 
             if (darkTheme) {
+                val onSeed = if (actualSeed.luminance() > 0.5f) Color.Black else Color.White
+
                 darkColorScheme(
                     primary = actualSeed,
-                    onPrimary = if (isSeedWhite) Color.Black else Color.White,
+                    onPrimary = onSeed,
                     primaryContainer = actualSeed.copy(alpha = 0.3f),
-                    onPrimaryContainer = actualSeed,
+                    onPrimaryContainer = Color.White,
 
                     secondary = actualSeed,
-                    onSecondary = if (isSeedWhite) Color.Black else Color.White,
+                    onSecondary = onSeed,
                     secondaryContainer = actualSeed.copy(alpha = 0.2f),
-                    onSecondaryContainer = actualSeed,
+                    onSecondaryContainer = Color.White,
 
                     tertiary = actualSeed,
-                    onTertiary = if (isSeedWhite) Color.Black else Color.White,
+                    onTertiary = onSeed,
                     tertiaryContainer = actualSeed.copy(alpha = 0.2f),
-                    onTertiaryContainer = actualSeed,
+                    onTertiaryContainer = Color.White,
 
                     background = Color(0xFF121212),
                     surface = Color(0xFF1E1E1E),
