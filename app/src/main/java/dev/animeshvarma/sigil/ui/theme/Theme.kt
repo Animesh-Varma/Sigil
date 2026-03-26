@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
@@ -73,26 +74,25 @@ fun SigilTheme(
                     outlineVariant = actualSeed.copy(alpha = 0.3f)
                 )
             } else {
+                val luminance = actualSeed.luminance()
+                val contrastText = if (luminance > 0.5f) Color.Black else Color.White
+
                 lightColorScheme(
                     primary = actualSeed,
-                    onPrimary = Color.White,
+                    onPrimary = contrastText,
                     primaryContainer = actualSeed.copy(alpha = 0.2f),
                     onPrimaryContainer = Color.Black,
-
                     secondary = actualSeed,
-                    onSecondary = Color.White,
+                    onSecondary = contrastText, // <-- Apply to secondary
                     secondaryContainer = actualSeed.copy(alpha = 0.1f),
                     onSecondaryContainer = Color.Black,
-
                     tertiary = actualSeed,
-                    onTertiary = Color.White,
+                    onTertiary = contrastText, // <-- Apply to tertiary
                     tertiaryContainer = actualSeed.copy(alpha = 0.1f),
                     onTertiaryContainer = Color.Black,
-
                     background = Color(0xFFFFFBFE),
                     surface = Color(0xFFFFFBFE),
                     onSurface = Color.Black,
-
                     outline = actualSeed.copy(alpha = 0.5f)
                 )
             }
