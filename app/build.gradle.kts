@@ -13,14 +13,13 @@ android {
         minSdk = 26 // Android 8 (Oreo)
         targetSdk = 36 // Android 16 (Baklava)
         // Schema: Positional logic (Major*10000 + Minor*100 + Patch).
-        // Ensures strictly increasing, parseable codes (Implemented in v0.4.5).
-        versionCode = 405
-        /* v0.5.0 Scope Split:
-         * - v0.4.5 ships Profiles & Engine updates (Current).
-         * - v0.5.0 defers Steganography & remaining features (Planned).
-         * Context: Maintains consistent update size and monthly cadence.
-         */
-        versionName = "0.4.5"
+        // Example: 10208 = 10000 (v1.x.x Major) + 200 (vx.2.x Minor) + 8 (vx.x.8 Patch).
+        //
+        // Dev Schema: Tens place >= 5 designates alpha/dev builds.
+        // Note: Dev builds use the last production base to ensure incremental ordering.
+        // Example: 451 = 400 (prior minor base for v0.4.x) + 50 (dev offset) + 1 (build).
+        versionCode = 451
+        versionName = "0.5.0-dev1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

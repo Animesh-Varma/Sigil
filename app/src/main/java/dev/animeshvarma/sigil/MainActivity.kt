@@ -2,6 +2,7 @@ package dev.animeshvarma.sigil
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Build
 import android.view.WindowManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -86,17 +87,28 @@ class MainActivity : AppCompatActivity() {
         })
 
         // Onboarding Check
-        val showOnboarding = mutableStateOf(!prefs.hasCompletedOnboarding())
+        val isFirstLaunch = !prefs.hasCompletedOnboarding()
+        val showOnboarding = mutableStateOf(isFirstLaunch)
+
+        if (isFirstLaunch && Build.VERSION.SDK_INT < Build.VERSION_CODES.Q && prefs.isDarkModeEnabled) {
+            viewModel.setDarkMode(false)
+        }
 
         checkAndProcessIntent(intent, viewModel)
 
         setContent {
+            val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
             val systemDark = isSystemInDarkTheme()
-            val useDarkTheme = if (prefs.isDynamicColorsEnabled) systemDark else prefs.isDarkModeEnabled
+
+            // 1. Force dynamic colors off on API < 31
+            val actualDynamicColor = supportsDynamicColor && prefs.isDynamicColorsEnabled
+
+            // 2. If Material You is ON, follow system. Otherwise, strictly follow the manual toggle!
+            val useDarkTheme = if (actualDynamicColor) systemDark else prefs.isDarkModeEnabled
 
             SigilTheme(
                 darkTheme = useDarkTheme,
-                dynamicColor = prefs.isDynamicColorsEnabled,
+                dynamicColor = actualDynamicColor,
                 seedColor = prefs.selectedThemeColor
             ) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->

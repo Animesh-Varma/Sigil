@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -84,7 +83,7 @@ fun LogsDialog(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
                         .padding(8.dp)
                 ) {
                     LazyColumn(
@@ -95,7 +94,7 @@ fun LogsDialog(
                             Text(
                                 text = log,
                                 fontFamily = FontFamily.Monospace,
-                                color = Color(0xFFE0E0E0),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 fontSize = 12.sp,
                                 lineHeight = 16.sp,
                                 modifier = Modifier.padding(bottom = 4.dp, start = 4.dp, end = 4.dp)
@@ -112,7 +111,7 @@ fun LogsDialog(
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = "Copy Logs",
-                            tint = Color.Gray,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                             modifier = Modifier.size(16.dp)
                         )
                     }

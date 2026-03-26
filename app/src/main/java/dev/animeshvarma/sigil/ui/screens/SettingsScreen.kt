@@ -11,6 +11,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.toColorInt
+import android.os.Build
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.model.LockType
@@ -99,10 +101,22 @@ fun SettingsScreen(viewModel: SigilViewModel) {
     // Privacy
     var screenShield by remember { mutableStateOf(prefs.isScreenShieldEnabled) }
 
-    // Appearance
-    var dynamicColors by remember { mutableStateOf(prefs.isDynamicColorsEnabled) }
+    // Device Capabilities
+    val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+    val systemDark = isSystemInDarkTheme()
+
+    // Appearance State
+    var dynamicColors by remember {
+        mutableStateOf(supportsDynamicColor && prefs.isDynamicColorsEnabled)
+    }
     var darkMode by remember { mutableStateOf(prefs.isDarkModeEnabled) }
     var selectedColorInt by remember { mutableIntStateOf(prefs.selectedThemeColor) }
+
+    LaunchedEffect(Unit) {
+        if (!supportsDynamicColor && prefs.isDynamicColorsEnabled) {
+            viewModel.setDynamicColors(false)
+        }
+    }
 
     // Dialogs
     var showVerifyPinDialog by remember { mutableStateOf(false) }
@@ -422,13 +436,23 @@ fun SettingsScreen(viewModel: SigilViewModel) {
         // --- APPEARANCE ---
         SettingsHeader("Appearance")
 
-        SettingsItem("Material You", "Use system wallpaper colors. (Requires Restart)") {
-            Switch(checked = dynamicColors, onCheckedChange = {
-                dynamicColors = it
-                viewModel.setDynamicColors(it)
-            })
-        }
+        SettingsItem(
+            title = "Material You",
+            desc = if (supportsDynamicColor) "Use system wallpaper colors. (Requires Restart)"
+            else "Not supported on this Android version.",
+            trailing = {
+                Switch(
+                    checked = dynamicColors,
+                    onCheckedChange = {
+                        dynamicColors = it
+                        viewModel.setDynamicColors(it)
+                    },
+                    enabled = supportsDynamicColor
+                )
+            }
+        )
 
+        // Accent Color
         AnimatedVisibility(visible = !dynamicColors) {
             Column {
                 Spacer(Modifier.height(12.dp))
@@ -454,16 +478,29 @@ fun SettingsScreen(viewModel: SigilViewModel) {
                                 .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape))
                     }
                 }
-                Spacer(Modifier.height(16.dp))
-
-                SettingsItem("Dark Mode", "Force dark theme. (Requires Restart)") {
-                    Switch(checked = darkMode, onCheckedChange = {
-                        darkMode = it
-                        viewModel.setDarkMode(it)
-                    })
-                }
             }
         }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Dark Mode
+        val isAppEffectivelyDark = if (dynamicColors) systemDark else darkMode
+
+        SettingsItem(
+            title = "Dark Mode",
+            desc = if (dynamicColors) "Following system theme (Material You is enabled)."
+            else "Force dark theme. (Requires Restart)",
+            trailing = {
+                Switch(
+                    checked = isAppEffectivelyDark,
+                    onCheckedChange = {
+                        darkMode = it
+                        viewModel.setDarkMode(it)
+                    },
+                    enabled = !dynamicColors
+                )
+            }
+        )
 
         Spacer(Modifier.height(24.dp))
 
@@ -875,10 +912,10 @@ fun SettingsScreen(viewModel: SigilViewModel) {
             },
             confirmButton = {
                 Button(onClick = {
-                    val finalGeneral = if (resetAll) true else resetGeneral
-                    val finalAppearance = if (resetAll) true else resetAppearance
-                    val finalKdf = if (resetAll) true else resetKdf
-                    val finalProfiles = if (resetAll) true else resetProfiles
+                    val finalGeneral = resetAll || resetGeneral
+                    val finalAppearance = resetAll || resetAppearance
+                    val finalKdf = resetAll || resetKdf
+                    val finalProfiles = resetAll || resetProfiles
 
                     // Perform Reset via Prefs
                     prefs.resetSettings(
