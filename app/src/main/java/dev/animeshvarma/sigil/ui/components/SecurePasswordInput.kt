@@ -106,7 +106,7 @@ fun SecurePasswordInput(
                     // 2. Vault Menu
                     Box {
                         IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.Key, "Vault", tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Default.Key, "Vault", tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
 
                         // VAULT POPUP

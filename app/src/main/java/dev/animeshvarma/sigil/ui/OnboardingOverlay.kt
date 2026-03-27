@@ -320,12 +320,15 @@ private fun PromptOverlay(state: OnboardingState, onNext: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.05f))
             .padding(24.dp),
         contentAlignment = config.alignment
     ) {
         Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-            elevation = CardDefaults.cardElevation(8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            elevation = CardDefaults.cardElevation(12.dp),
             modifier = Modifier
                 .fillMaxWidth()
                 .offset { IntOffset(offsetX.roundToInt(), offsetY.roundToInt()) }

@@ -46,7 +46,8 @@ object CryptoEngine {
     )
 
     enum class Algorithm {
-        AES_GCM, CHACHA20_POLY1305, XCHACHA20_POLY1305, ARIA_256_GCM,
+        AES_GCM, CHACHA20_POLY1305, XCHACHA20_POLY1305,
+        ARIA_256_GCM, CAMELLIA_GCM, SERPENT_GCM, TWOFISH_GCM, SM4_GCM,
         AES_CBC, TWOFISH_CBC, SERPENT_CBC, CAMELLIA_CBC,
         CAST6_CBC, RC6_CBC, SM4_CBC, SEED_CBC,
         BLOWFISH_CBC, IDEA_CBC, CAST5_CBC, TEA_CBC, XTEA_CBC, GOST_CBC
@@ -57,14 +58,21 @@ object CryptoEngine {
             Algorithm.AES_GCM,
             Algorithm.CHACHA20_POLY1305,
             Algorithm.XCHACHA20_POLY1305,
-            Algorithm.ARIA_256_GCM -> true
+            Algorithm.ARIA_256_GCM,
+            Algorithm.CAMELLIA_GCM,
+            Algorithm.SERPENT_GCM,
+            Algorithm.TWOFISH_GCM,
+            Algorithm.SM4_GCM -> true
             else -> false
         }
     }
 
     private fun getIvSize(algo: Algorithm): Int {
         return when (algo) {
-            Algorithm.AES_GCM, Algorithm.CHACHA20_POLY1305, Algorithm.ARIA_256_GCM -> 12
+            Algorithm.AES_GCM, Algorithm.CHACHA20_POLY1305,
+            Algorithm.ARIA_256_GCM, Algorithm.CAMELLIA_GCM,
+            Algorithm.SERPENT_GCM, Algorithm.TWOFISH_GCM, Algorithm.SM4_GCM -> 12
+
             Algorithm.XCHACHA20_POLY1305 -> 24
 
             Algorithm.BLOWFISH_CBC, Algorithm.IDEA_CBC, Algorithm.CAST5_CBC,
@@ -84,7 +92,7 @@ object CryptoEngine {
 
     private fun getKeySize(algo: Algorithm): Int {
         return when (algo) {
-            Algorithm.SM4_CBC, Algorithm.SEED_CBC, Algorithm.CAST5_CBC,
+            Algorithm.SM4_CBC, Algorithm.SM4_GCM, Algorithm.SEED_CBC, Algorithm.CAST5_CBC,
             Algorithm.IDEA_CBC, Algorithm.TEA_CBC, Algorithm.XTEA_CBC, Algorithm.BLOWFISH_CBC -> 16
             else -> 32
         }
@@ -602,7 +610,15 @@ object CryptoEngine {
             Algorithm.AES_GCM -> if (encrypt) encryptAesGcm(data, key, iv, null) else decryptAesGcm(data, key, iv, null)
             Algorithm.CHACHA20_POLY1305 -> processChaCha20Poly1305(encrypt, data, key, iv)
             Algorithm.XCHACHA20_POLY1305 -> processXChaCha20Poly1305(encrypt, data, key, iv)
-            Algorithm.ARIA_256_GCM -> processAriaGcm(encrypt, data, key, iv)
+
+            // --- GCM MAPPED ALGORITHMS ---
+            Algorithm.ARIA_256_GCM -> processGcmBlockCipher(encrypt, ARIAEngine(), data, key, iv)
+            Algorithm.CAMELLIA_GCM -> processGcmBlockCipher(encrypt, CamelliaEngine(), data, key, iv)
+            Algorithm.SERPENT_GCM -> processGcmBlockCipher(encrypt, SerpentEngine(), data, key, iv)
+            Algorithm.TWOFISH_GCM -> processGcmBlockCipher(encrypt, TwofishEngine(), data, key, iv)
+            Algorithm.SM4_GCM -> processGcmBlockCipher(encrypt, SM4Engine(), data, key, iv)
+
+            // --- CBC MAPPED ALGORITHMS ---
             Algorithm.AES_CBC -> processBlockCipher(encrypt, AESEngine.newInstance(), data, key, iv)
             Algorithm.TWOFISH_CBC -> processBlockCipher(encrypt, TwofishEngine(), data, key, iv)
             Algorithm.SERPENT_CBC -> processBlockCipher(encrypt, SerpentEngine(), data, key, iv)
@@ -621,6 +637,19 @@ object CryptoEngine {
     }
 
     // --- LOW LEVEL CIPHER IMPLEMENTATIONS ---
+
+    // Generic wrapper for any 128-bit BouncyCastle Engine to act as GCM/AEAD
+    private fun processGcmBlockCipher(encrypt: Boolean, engine: org.bouncycastle.crypto.BlockCipher, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
+        val cipher = GCMBlockCipher.newInstance(engine, org.bouncycastle.crypto.modes.gcm.BasicGCMMultiplier())
+        // 128 is the MAC length in bits
+        val params = AEADParameters(KeyParameter(key), 128, iv, null)
+        cipher.init(encrypt, params)
+        val out = ByteArray(cipher.getOutputSize(data.size))
+        val len = cipher.processBytes(data, 0, data.size, out, 0)
+        val finalLen = cipher.doFinal(out, len)
+        return out.copyOf(len + finalLen)
+    }
+
     private fun processChaCha20Poly1305(encrypt: Boolean, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
         val cipher = ChaCha20Poly1305()
         val params = AEADParameters(KeyParameter(key), 128, iv, null)
@@ -651,16 +680,6 @@ object CryptoEngine {
         } finally {
             subKey.fill(0.toByte())
         }
-    }
-
-    private fun processAriaGcm(encrypt: Boolean, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {
-        val cipher = GCMBlockCipher.newInstance(ARIAEngine(), org.bouncycastle.crypto.modes.gcm.BasicGCMMultiplier())
-        val params = AEADParameters(KeyParameter(key), 128, iv, null)
-        cipher.init(encrypt, params)
-        val out = ByteArray(cipher.getOutputSize(data.size))
-        val len = cipher.processBytes(data, 0, data.size, out, 0)
-        val finalLen = cipher.doFinal(out, len)
-        return out.copyOf(len + finalLen)
     }
 
     private fun processBlockCipher(encrypt: Boolean, engine: org.bouncycastle.crypto.BlockCipher, data: ByteArray, key: ByteArray, iv: ByteArray): ByteArray {

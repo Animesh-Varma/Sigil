@@ -63,18 +63,6 @@ import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Composable screen for configuring a custom cipher cascade, entering input and password, performing encrypt/decrypt actions,
- * and managing save/overwrite profile flows.
- *
- * The UI exposes controls for toggling compression, reordering/removing encryption layers, adding layers via a bottom sheet,
- * editing input and password (with vault integration), triggering encryption/decryption, and viewing/sharing/copying output.
- * It also presents a Save Profile dialog (including optional KDF override and raw mode) and an overwrite confirmation dialog
- * when a profile name already exists.
- *
- * @param viewModel The SigilViewModel providing state, actions, and persistence APIs used by the screen.
- * @param uiState Current UiState containing layers, input/password/output text, compression flag, and editing profile id.
- */
 @Suppress("AssignedValueIsNeverRead")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -161,8 +149,8 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                             // Always open the dialog to allow editing settings (Name, KDF, Raw)
                             showSaveProfileDialog = true
                         },
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp),
                         modifier = Modifier.size(32.dp)
                     ) {
@@ -176,7 +164,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
                     SmallFloatingActionButton(
                         onClick = { showAddLayerSheet = true },
                         containerColor = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         elevation = FloatingActionButtonDefaults.elevation(0.dp),
                         modifier = Modifier.size(32.dp)
                     ) {

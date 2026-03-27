@@ -52,12 +52,6 @@ import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
  * Renders the encryption screen UI including input, secure password entry, encrypt/decrypt controls,
  * output with share/copy actions, and a bottom sheet for selecting, creating, editing, or deleting
  * encryption profiles.
- *
- * The sheet automatically closes when the lifecycle is paused. Profile actions delegate to the
- * provided ViewModel and display short toasts for feedback.
- *
- * @param viewModel ViewModel that manages state and handles user actions (vault, profile management, encryption, logging, clipboard).
- * @param uiState Current UI state used to populate fields, available profiles, and active profile information.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -108,7 +102,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
             SmallFloatingActionButton(
                 onClick = { showProfileSheet = true },
                 containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                contentColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(end = 8.dp, top = 15.dp)
