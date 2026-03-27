@@ -24,6 +24,10 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40
 )
 
+private fun Color.calculateContrastColor(): Color {
+    return if (this.luminance() > 0.35f) Color.Black else Color.White
+}
+
 @Composable
 fun SigilTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -31,21 +35,21 @@ fun SigilTheme(
     seedColor: Int? = null,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        // 1. Material You (Dynamic Colors) - Priority if enabled
+    val baseColorScheme = when {
+        // Material You (Dynamic Colors) - Priority if enabled
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
 
-        // 2. Custom Seed Color - "Standardized" Propagation
+        // Custom Seed Color - "Standardized" Propagation
         seedColor != null -> {
             val isSeedWhite = seedColor == 0xFFFFFFFF.toInt()
 
             val actualSeed = if (!darkTheme && isSeedWhite) Color.Black else Color(seedColor)
 
             if (darkTheme) {
-                val onSeed = if (actualSeed.luminance() > 0.5f) Color.Black else Color.White
+                val onSeed = actualSeed.calculateContrastColor()
 
                 darkColorScheme(
                     primary = actualSeed,
@@ -76,8 +80,7 @@ fun SigilTheme(
                     outlineVariant = actualSeed.copy(alpha = 0.3f)
                 )
             } else {
-                val luminance = actualSeed.luminance()
-                val contrastText = if (luminance > 0.5f) Color.Black else Color.White
+                val contrastText = actualSeed.calculateContrastColor()
 
                 lightColorScheme(
                     primary = actualSeed,
@@ -85,11 +88,11 @@ fun SigilTheme(
                     primaryContainer = actualSeed.copy(alpha = 0.2f),
                     onPrimaryContainer = Color.Black,
                     secondary = actualSeed,
-                    onSecondary = contrastText, // <-- Apply to secondary
+                    onSecondary = contrastText,
                     secondaryContainer = actualSeed.copy(alpha = 0.1f),
                     onSecondaryContainer = Color.Black,
                     tertiary = actualSeed,
-                    onTertiary = contrastText, // <-- Apply to tertiary
+                    onTertiary = contrastText,
                     tertiaryContainer = actualSeed.copy(alpha = 0.1f),
                     onTertiaryContainer = Color.Black,
                     background = Color(0xFFFFFBFE),
@@ -100,10 +103,15 @@ fun SigilTheme(
             }
         }
 
-        // 3. Fallback Defaults
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }
+
+    val finalColorScheme = baseColorScheme.copy(
+        onPrimary = baseColorScheme.primary.calculateContrastColor(),
+        onSecondary = baseColorScheme.secondary.calculateContrastColor(),
+        onTertiary = baseColorScheme.tertiary.calculateContrastColor()
+    )
 
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -117,7 +125,7 @@ fun SigilTheme(
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = finalColorScheme,
         typography = Typography,
         content = content
     )

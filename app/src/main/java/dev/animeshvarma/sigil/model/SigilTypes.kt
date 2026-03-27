@@ -58,11 +58,11 @@ object ProfileRegistry {
     val defaultProfile = EncryptionProfile(
         id = "sigil_default_chain",
         name = "Sigil Chain",
-        description = "Sigil's hybrid stack. XChaCha20 + Serpent + Twofish + AES.",
+        description = "Sigil's hybrid stack. XChaCha20 + Serpent + Twofish + AES (All AEAD).",
         layers = listOf(
             CryptoEngine.Algorithm.XCHACHA20_POLY1305,
-            CryptoEngine.Algorithm.SERPENT_CBC,
-            CryptoEngine.Algorithm.TWOFISH_CBC,
+            CryptoEngine.Algorithm.SERPENT_GCM,
+            CryptoEngine.Algorithm.TWOFISH_GCM,
             CryptoEngine.Algorithm.AES_GCM
         ),
         isBuiltIn = true,
@@ -100,6 +100,13 @@ object AlgorithmRegistry {
             defaultMode = CipherMode.GCM
         ),
         SigilAlgorithm(
+            id = "XCHACHA20_POLY1305",
+            name = "XChaCha20-Poly1305",
+            description = "Extended-nonce variant (192-bit). Eliminates random nonce collision risks. Highly recommended stream AEAD.",
+            type = CipherType.STREAM,
+            defaultMode = CipherMode.POLY1305
+        ),
+        SigilAlgorithm(
             id = "CHACHA20_POLY1305",
             name = "ChaCha20-Poly1305",
             description = "High-speed stream cipher by D. J. Bernstein. Immune to padding oracle attacks and timing attacks.",
@@ -107,45 +114,65 @@ object AlgorithmRegistry {
             defaultMode = CipherMode.POLY1305
         ),
         SigilAlgorithm(
-            id = "XCHACHA20_POLY1305",
-            name = "XChaCha20-Poly1305",
-            description = "Extended-nonce variant (192-bit). Eliminates random nonce collision risks.",
-            type = CipherType.STREAM,
-            defaultMode = CipherMode.POLY1305
-        ),
-
-        SigilAlgorithm(
-            id = "SERPENT_CBC",
-            name = "Serpent",
-            description = "The 'Tank'. AES runner-up with 32 rounds (vs AES's 14). Slower, but offers the highest theoretical security margin.",
+            id = "CAMELLIA_GCM",
+            name = "Camellia (GCM)",
+            description = "EU/Japan standard with Authenticated Encryption. Security profile comparable to AES but mathematically distinct.",
             type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
+            defaultMode = CipherMode.GCM
         ),
         SigilAlgorithm(
-            id = "TWOFISH_CBC",
-            name = "Twofish",
-            description = "Complex key schedule makes it exceptionally resistant to brute-force attacks. Designed by Bruce Schneier.",
+            id = "SERPENT_GCM",
+            name = "Serpent (GCM)",
+            description = "The 'Tank' upgraded with GCM. Slower than AES, but offers the highest theoretical security margin with built-in integrity.",
             type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
+            defaultMode = CipherMode.GCM
         ),
         SigilAlgorithm(
-            id = "CAMELLIA_CBC",
-            name = "Camellia",
-            description = "EU (NESSIE) and Japan (CRYPTREC) standard. Security profile comparable to AES.",
+            id = "TWOFISH_GCM",
+            name = "Twofish (GCM)",
+            description = "Bruce Schneier's exceptionally robust cipher, wrapped in GCM for authenticated encryption.",
             type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
+            defaultMode = CipherMode.GCM
         ),
         SigilAlgorithm(
-            id = "SM4_CBC",
-            name = "SM4",
-            description = "Chinese National Wireless LAN standard (GB/T 32907). Mandated for government data security in China.",
+            id = "SM4_GCM",
+            name = "SM4 (GCM)",
+            description = "Chinese National standard upgraded with GCM. Excellent for regulatory compliance and distinct cryptographic design.",
             type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
+            defaultMode = CipherMode.GCM
         ),
         SigilAlgorithm(
             id = "AES_CBC",
             name = "AES-256 (CBC)",
             description = "Classic AES. Good compatibility, but GCM is preferred for built-in integrity checks.",
+            type = CipherType.BLOCK,
+            defaultMode = CipherMode.CBC
+        ),
+        SigilAlgorithm(
+            id = "CAMELLIA_CBC",
+            name = "Camellia (CBC)",
+            description = "EU (NESSIE) and Japan (CRYPTREC) standard in classic CBC mode.",
+            type = CipherType.BLOCK,
+            defaultMode = CipherMode.CBC
+        ),
+        SigilAlgorithm(
+            id = "SERPENT_CBC",
+            name = "Serpent (CBC)",
+            description = "AES runner-up with 32 rounds. Classic CBC implementation.",
+            type = CipherType.BLOCK,
+            defaultMode = CipherMode.CBC
+        ),
+        SigilAlgorithm(
+            id = "TWOFISH_CBC",
+            name = "Twofish (CBC)",
+            description = "Complex key schedule makes it exceptionally resistant to brute-force attacks. CBC mode.",
+            type = CipherType.BLOCK,
+            defaultMode = CipherMode.CBC
+        ),
+        SigilAlgorithm(
+            id = "SM4_CBC",
+            name = "SM4 (CBC)",
+            description = "Chinese National Wireless LAN standard (GB/T 32907). CBC mode.",
             type = CipherType.BLOCK,
             defaultMode = CipherMode.CBC
         ),
@@ -170,7 +197,6 @@ object AlgorithmRegistry {
             type = CipherType.BLOCK,
             defaultMode = CipherMode.CBC
         ),
-
         SigilAlgorithm(
             id = "BLOWFISH_CBC",
             name = "Blowfish",
