@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -50,33 +51,39 @@ fun SigilTheme(
         seedColor != null -> {
             val isSeedWhite = seedColor == 0xFFFFFFFF.toInt()
 
-            val actualSeed = if (!darkTheme && isSeedWhite) Color.Black else Color(seedColor)
+            // Clamp actual seed to opaque before reusing across the scheme
+            val actualSeed = if (!darkTheme && isSeedWhite) Color.Black else Color(seedColor).copy(alpha = 1f)
 
             if (darkTheme) {
                 val onSeed = actualSeed.calculateContrastColor()
+                val darkSurface = Color(0xFF1E1E1E)
+
+                val primaryContainerColor = actualSeed.copy(alpha = 0.3f)
+                val secondaryContainerColor = actualSeed.copy(alpha = 0.2f)
+                val tertiaryContainerColor = actualSeed.copy(alpha = 0.2f)
 
                 darkColorScheme(
                     primary = actualSeed,
                     onPrimary = onSeed,
-                    primaryContainer = actualSeed.copy(alpha = 0.3f),
-                    onPrimaryContainer = Color.White,
+                    primaryContainer = primaryContainerColor,
+                    onPrimaryContainer = primaryContainerColor.compositeOver(darkSurface).calculateContrastColor(),
 
                     secondary = actualSeed,
                     onSecondary = onSeed,
-                    secondaryContainer = actualSeed.copy(alpha = 0.2f),
-                    onSecondaryContainer = Color.White,
+                    secondaryContainer = secondaryContainerColor,
+                    onSecondaryContainer = secondaryContainerColor.compositeOver(darkSurface).calculateContrastColor(),
 
                     tertiary = actualSeed,
                     onTertiary = onSeed,
-                    tertiaryContainer = actualSeed.copy(alpha = 0.2f),
-                    onTertiaryContainer = Color.White,
+                    tertiaryContainer = tertiaryContainerColor,
+                    onTertiaryContainer = tertiaryContainerColor.compositeOver(darkSurface).calculateContrastColor(),
 
                     background = Color(0xFF121212),
-                    surface = Color(0xFF1E1E1E),
+                    surface = darkSurface,
                     surfaceVariant = Color(0xFF2C2C2C),
                     onSurface = Color.White,
                     onSurfaceVariant = Color.LightGray,
-                    surfaceContainer = Color(0xFF1E1E1E),
+                    surfaceContainer = darkSurface,
                     surfaceContainerLow = Color(0xFF1A1A1A),
                     surfaceContainerHigh = Color(0xFF252525),
 
@@ -85,22 +92,30 @@ fun SigilTheme(
                 )
             } else {
                 val contrastText = actualSeed.calculateContrastColor()
+                val lightSurface = Color(0xFFFFFBFE)
+
+                val primaryContainerColor = actualSeed.copy(alpha = 0.2f)
+                val secondaryContainerColor = actualSeed.copy(alpha = 0.1f)
+                val tertiaryContainerColor = actualSeed.copy(alpha = 0.1f)
 
                 lightColorScheme(
                     primary = actualSeed,
                     onPrimary = contrastText,
-                    primaryContainer = actualSeed.copy(alpha = 0.2f),
-                    onPrimaryContainer = Color.Black,
+                    primaryContainer = primaryContainerColor,
+                    onPrimaryContainer = primaryContainerColor.compositeOver(lightSurface).calculateContrastColor(),
+
                     secondary = actualSeed,
                     onSecondary = contrastText,
-                    secondaryContainer = actualSeed.copy(alpha = 0.1f),
-                    onSecondaryContainer = Color.Black,
+                    secondaryContainer = secondaryContainerColor,
+                    onSecondaryContainer = secondaryContainerColor.compositeOver(lightSurface).calculateContrastColor(),
+
                     tertiary = actualSeed,
                     onTertiary = contrastText,
-                    tertiaryContainer = actualSeed.copy(alpha = 0.1f),
-                    onTertiaryContainer = Color.Black,
-                    background = Color(0xFFFFFBFE),
-                    surface = Color(0xFFFFFBFE),
+                    tertiaryContainer = tertiaryContainerColor,
+                    onTertiaryContainer = tertiaryContainerColor.compositeOver(lightSurface).calculateContrastColor(),
+
+                    background = lightSurface,
+                    surface = lightSurface,
                     onSurface = Color.Black,
                     outline = actualSeed.copy(alpha = 0.5f)
                 )
