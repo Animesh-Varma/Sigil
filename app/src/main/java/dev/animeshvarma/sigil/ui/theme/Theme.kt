@@ -25,7 +25,10 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private fun Color.calculateContrastColor(): Color {
-    return if (this.luminance() > 0.35f) Color.Black else Color.White
+    val l = luminance()
+    val blackContrast = (l + 0.05f) / 0.05f
+    val whiteContrast = 1.05f / (l + 0.05f)
+    return if (blackContrast >= whiteContrast) Color.Black else Color.White
 }
 
 @Composable
@@ -107,11 +110,15 @@ fun SigilTheme(
         else -> LightColorScheme
     }
 
-    val finalColorScheme = baseColorScheme.copy(
-        onPrimary = baseColorScheme.primary.calculateContrastColor(),
-        onSecondary = baseColorScheme.secondary.calculateContrastColor(),
-        onTertiary = baseColorScheme.tertiary.calculateContrastColor()
-    )
+    val finalColorScheme = if (seedColor != null) {
+        baseColorScheme.copy(
+            onPrimary = baseColorScheme.primary.calculateContrastColor(),
+            onSecondary = baseColorScheme.secondary.calculateContrastColor(),
+            onTertiary = baseColorScheme.tertiary.calculateContrastColor()
+        )
+    } else {
+        baseColorScheme
+    }
 
     val view = LocalView.current
     if (!view.isInEditMode) {
