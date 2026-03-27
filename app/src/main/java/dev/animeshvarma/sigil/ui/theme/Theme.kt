@@ -49,6 +49,10 @@ fun SigilTheme(
 
         // Custom Seed Color - "Standardized" Propagation
         seedColor != null -> {
+            // IMPORTANT: SigilPreferences defaults to 0xFFFFFFFF (White).
+            // This is intentional to ensure the app defaults to a
+            // clean Black theme in Light mode and White in Dark mode, rather than
+            // the stock Material 3 Purple/Pink palettes.
             val isSeedWhite = seedColor == 0xFFFFFFFF.toInt()
 
             // Clamp actual seed to opaque before reusing across the scheme
@@ -126,16 +130,6 @@ fun SigilTheme(
         else -> LightColorScheme
     }
 
-    val finalColorScheme = if (!useDynamicColor && seedColor != null) {
-        baseColorScheme.copy(
-            onPrimary = baseColorScheme.primary.calculateContrastColor(),
-            onSecondary = baseColorScheme.secondary.calculateContrastColor(),
-            onTertiary = baseColorScheme.tertiary.calculateContrastColor()
-        )
-    } else {
-        baseColorScheme
-    }
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
@@ -148,7 +142,7 @@ fun SigilTheme(
     }
 
     MaterialTheme(
-        colorScheme = finalColorScheme,
+        colorScheme = baseColorScheme,
         typography = Typography,
         content = content
     )
