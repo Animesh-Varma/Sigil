@@ -84,175 +84,50 @@ object ProfileRegistry {
 }
 
 object AlgorithmRegistry {
+    // Helper to prevent structural duplication
+    private fun algo(
+        id: String,
+        name: String,
+        desc: String,
+        type: CipherType = CipherType.BLOCK,
+        mode: CipherMode = CipherMode.GCM,
+        isWeak: Boolean = false,
+        warning: String? = null
+    ) = SigilAlgorithm(id, name, desc, type, mode, isWeak, warning)
+
     val supportedAlgorithms = listOf(
-        SigilAlgorithm(
-            id = "AES_GCM",
-            name = "AES-256 (GCM)",
-            description = "The global standard. Hardware accelerated, authenticated encryption (AEAD). Fast and highly secure.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.GCM
-        ),
-        SigilAlgorithm(
-            id = "ARIA_256_GCM",
-            name = "ARIA-256 (GCM)",
-            description = "South Korean standard (RFC 5794). 128-bit block, 256-bit key. A high-security, AEAD alternative independent of NIST/AES.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.GCM
-        ),
-        SigilAlgorithm(
-            id = "XCHACHA20_POLY1305",
-            name = "XChaCha20-Poly1305",
-            description = "Extended-nonce variant (192-bit). Eliminates random nonce collision risks. Highly recommended stream AEAD.",
-            type = CipherType.STREAM,
-            defaultMode = CipherMode.POLY1305
-        ),
-        SigilAlgorithm(
-            id = "CHACHA20_POLY1305",
-            name = "ChaCha20-Poly1305",
-            description = "High-speed stream cipher by D. J. Bernstein. Immune to padding oracle attacks and timing attacks.",
-            type = CipherType.STREAM,
-            defaultMode = CipherMode.POLY1305
-        ),
-        SigilAlgorithm(
-            id = "CAMELLIA_GCM",
-            name = "Camellia (GCM)",
-            description = "EU/Japan standard with Authenticated Encryption. Security profile comparable to AES but mathematically distinct.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.GCM
-        ),
-        SigilAlgorithm(
-            id = "SERPENT_GCM",
-            name = "Serpent (GCM)",
-            description = "The 'Tank' upgraded with GCM. Slower than AES, but offers the highest theoretical security margin with built-in integrity.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.GCM
-        ),
-        SigilAlgorithm(
-            id = "TWOFISH_GCM",
-            name = "Twofish (GCM)",
-            description = "Bruce Schneier's exceptionally robust cipher, wrapped in GCM for authenticated encryption.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.GCM
-        ),
-        SigilAlgorithm(
-            id = "SM4_GCM",
-            name = "SM4 (GCM)",
-            description = "Chinese National standard upgraded with GCM. Excellent for regulatory compliance and distinct cryptographic design.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.GCM
-        ),
-        SigilAlgorithm(
-            id = "AES_CBC",
-            name = "AES-256 (CBC)",
-            description = "Classic AES. Good compatibility, but GCM is preferred for built-in integrity checks.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "CAMELLIA_CBC",
-            name = "Camellia (CBC)",
-            description = "EU (NESSIE) and Japan (CRYPTREC) standard in classic CBC mode.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "SERPENT_CBC",
-            name = "Serpent (CBC)",
-            description = "AES runner-up with 32 rounds. Classic CBC implementation.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "TWOFISH_CBC",
-            name = "Twofish (CBC)",
-            description = "Complex key schedule makes it exceptionally resistant to brute-force attacks. CBC mode.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "SM4_CBC",
-            name = "SM4 (CBC)",
-            description = "Chinese National Wireless LAN standard (GB/T 32907). CBC mode.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "CAST6_CBC",
-            name = "CAST-256",
-            description = "RFC 2612. An AES finalist known for resistance to linear and differential cryptanalysis.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "RC6_CBC",
-            name = "RC6",
-            description = "Rivest (RSA) design. Simple and fast, relies on data-dependent rotations.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "SEED_CBC",
-            name = "SEED",
-            description = "South Korean standard (KISA). Widely used in Asian banking security.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC
-        ),
-        SigilAlgorithm(
-            id = "BLOWFISH_CBC",
-            name = "Blowfish",
-            description = "Legacy Schneier design. Fast for short text.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC,
-            isWeak = true,
-            securityWarning = "64-bit Block Size. Vulnerable to birthday attacks on large files."
-        ),
-        SigilAlgorithm(
-            id = "IDEA_CBC",
-            name = "IDEA",
-            description = "The original PGP cipher. Uses 128-bit keys.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC,
-            isWeak = true,
-            securityWarning = "64-bit Block Size. Legacy algorithm."
-        ),
-        SigilAlgorithm(
-            id = "CAST5_CBC",
-            name = "CAST-128",
-            description = "Default cipher for older GPG versions.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC,
-            isWeak = true,
-            securityWarning = "64-bit Block Size. Legacy algorithm."
-        ),
-        SigilAlgorithm(
-            id = "GOST_CBC",
-            name = "GOST 28147",
-            description = "Soviet/Russian standard. 32-round Feistel network.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC,
-            isWeak = true,
-            securityWarning = "64-bit Block Size. Structure theoretically vulnerable to advanced analysis."
-        ),
-        SigilAlgorithm(
-            id = "TEA_CBC",
-            name = "TEA",
-            description = "Tiny Encryption Algorithm. Extremely simple code.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC,
-            isWeak = true,
-            securityWarning = "Weak Key Schedule. Vulnerable to equivalent key attacks."
-        ),
-        SigilAlgorithm(
-            id = "XTEA_CBC",
-            name = "XTEA",
-            description = "Extended TEA. Fixes some TEA weaknesses.",
-            type = CipherType.BLOCK,
-            defaultMode = CipherMode.CBC,
-            isWeak = true,
-            securityWarning = "64-bit Block Size. Educational/Legacy use only."
-        )
+        // --- AEAD / GCM BLOCK CIPHERS ---
+        algo("AES_GCM", "AES-256 (GCM)", "The global standard. Hardware accelerated, authenticated encryption (AEAD). Fast and highly secure."),
+        algo("ARIA_256_GCM", "ARIA-256 (GCM)", "South Korean standard (RFC 5794). 128-bit block, 256-bit key. High-security NIST alternative."),
+        algo("CAMELLIA_GCM", "Camellia (GCM)", "EU/Japan standard with Authenticated Encryption. Security profile comparable to AES."),
+        algo("SERPENT_GCM", "Serpent (GCM)", "The 'Tank' upgraded with GCM. Offers the highest theoretical security margin with built-in integrity."),
+        algo("TWOFISH_GCM", "Twofish (GCM)", "Bruce Schneier's robust cipher, wrapped in GCM for authenticated encryption."),
+        algo("SM4_GCM", "SM4 (GCM)", "Chinese National standard upgraded with GCM. Mandated for government data security in China."),
+
+        // --- STREAM CIPHERS (AEAD) ---
+        algo("XCHACHA20_POLY1305", "XChaCha20-Poly1305", "Extended-nonce variant (192-bit). Eliminates random nonce collision risks.", CipherType.STREAM, CipherMode.POLY1305),
+        algo("CHACHA20_POLY1305", "ChaCha20-Poly1305", "High-speed stream cipher by D. J. Bernstein. Immune to padding oracle and timing attacks.", CipherType.STREAM, CipherMode.POLY1305),
+
+        // --- LEGACY CBC BLOCK CIPHERS (128-bit) ---
+        algo("AES_CBC", "AES-256 (CBC)", "Classic AES. Good compatibility, but GCM is preferred for built-in integrity checks.", mode = CipherMode.CBC),
+        algo("CAMELLIA_CBC", "Camellia (CBC)", "EU (NESSIE) and Japan (CRYPTREC) standard in classic CBC mode.", mode = CipherMode.CBC),
+        algo("SERPENT_CBC", "Serpent (CBC)", "AES runner-up with 32 rounds. Classic CBC implementation.", mode = CipherMode.CBC),
+        algo("TWOFISH_CBC", "Twofish (CBC)", "Complex key schedule makes it exceptionally resistant to brute-force attacks. CBC mode.", mode = CipherMode.CBC),
+        algo("SM4_CBC", "SM4 (CBC)", "Chinese National Wireless LAN standard (GB/T 32907). CBC mode.", mode = CipherMode.CBC),
+        algo("CAST6_CBC", "CAST-256", "RFC 2612. An AES finalist known for resistance to linear and differential cryptanalysis.", mode = CipherMode.CBC),
+        algo("RC6_CBC", "RC6", "Rivest (RSA) design. Simple and fast, relies on data-dependent rotations.", mode = CipherMode.CBC),
+        algo("SEED_CBC", "SEED", "South Korean standard (KISA). Widely used in Asian banking security.", mode = CipherMode.CBC),
+
+        // --- WEAK / LEGACY CIPHERS (64-bit) ---
+        algo("BLOWFISH_CBC", "Blowfish", "Legacy Schneier design. Fast for short text.", mode = CipherMode.CBC, isWeak = true, warning = "64-bit Block Size. Vulnerable to birthday attacks on large files."),
+        algo("IDEA_CBC", "IDEA", "The original PGP cipher. Uses 128-bit keys.", mode = CipherMode.CBC, isWeak = true, warning = "64-bit Block Size. Legacy algorithm."),
+        algo("CAST5_CBC", "CAST-128", "Default cipher for older GPG versions.", mode = CipherMode.CBC, isWeak = true, warning = "64-bit Block Size. Legacy algorithm."),
+        algo("GOST_CBC", "GOST 28147", "Soviet/Russian standard. 32-round Feistel network.", mode = CipherMode.CBC, isWeak = true, warning = "64-bit Block Size. Theoretically vulnerable to advanced analysis."),
+        algo("TEA_CBC", "TEA", "Tiny Encryption Algorithm. Extremely simple code.", mode = CipherMode.CBC, isWeak = true, warning = "Weak Key Schedule. Vulnerable to equivalent key attacks."),
+        algo("XTEA_CBC", "XTEA", "Extended TEA. Fixes some TEA weaknesses.", mode = CipherMode.CBC, isWeak = true, warning = "64-bit Block Size. Educational/Legacy use only.")
     )
 }
+
 data class LayerEntry(
     val id: String = UUID.randomUUID().toString(),
     val algorithm: CryptoEngine.Algorithm
