@@ -38,9 +38,10 @@ fun SigilTheme(
     seedColor: Int? = null,
     content: @Composable () -> Unit
 ) {
+    val useDynamicColor = dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val baseColorScheme = when {
         // Material You (Dynamic Colors) - Priority if enabled
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+        useDynamicColor -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
@@ -110,7 +111,7 @@ fun SigilTheme(
         else -> LightColorScheme
     }
 
-    val finalColorScheme = if (seedColor != null) {
+    val finalColorScheme = if (!useDynamicColor && seedColor != null) {
         baseColorScheme.copy(
             onPrimary = baseColorScheme.primary.calculateContrastColor(),
             onSecondary = baseColorScheme.secondary.calculateContrastColor(),
