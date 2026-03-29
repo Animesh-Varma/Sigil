@@ -28,6 +28,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.animeshvarma.sigil.data.VaultEntry
 
 /**
@@ -128,7 +129,7 @@ fun SecurePasswordInput(
                                 letterSpacing = 1.sp,
                                 color = MaterialTheme.colorScheme.primary
                             )
-
+                            KeepScreenShieldAwake(viewModel())
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             // Save Option
@@ -209,7 +210,7 @@ fun SecurePasswordInput(
 
     // SAVE KEY DIALOG
     if (showNameDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showNameDialog = false },
             icon = { Icon(Icons.Default.Save, null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text("Save to Vault") },
@@ -253,7 +254,7 @@ fun SecurePasswordInput(
 
     // OVERWRITE WARNING DIALOG
     if (showOverwriteDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showOverwriteDialog = false },
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Key Exists") },

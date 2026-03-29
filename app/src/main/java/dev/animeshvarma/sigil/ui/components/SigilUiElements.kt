@@ -16,6 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import dev.animeshvarma.sigil.SigilViewModel
 
 @Composable
 fun SigilButtonGroup(
@@ -150,4 +153,12 @@ fun StyledLayerContainer(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         content = content
     )
+}
+
+@Composable
+fun KeepScreenShieldAwake(viewModel: SigilViewModel) {
+    DisposableEffect(Unit) {
+        viewModel.setSecureWindowExemption(true)
+        onDispose { viewModel.setSecureWindowExemption(false) }
+    }
 }

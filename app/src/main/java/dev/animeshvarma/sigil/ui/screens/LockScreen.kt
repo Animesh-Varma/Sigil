@@ -33,6 +33,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.model.LockType
+import dev.animeshvarma.sigil.ui.components.SecureAlertDialog
 import dev.animeshvarma.sigil.util.BiometricHelper
 
 /**
@@ -282,7 +283,7 @@ fun LockScreen(
 
     // --- DIALOGS ---
     if (showBiometricInvalidatedDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = {
             },
             icon = {
@@ -304,7 +305,7 @@ fun LockScreen(
     }
 
     if (showWipeDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showWipeDialog = false },
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Emergency Reset") },

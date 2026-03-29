@@ -40,6 +40,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
 
 class SigilViewModel(application: Application) : AndroidViewModel(application) {
@@ -1021,6 +1022,27 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                 // Clipboard may have been cleared externally or access denied
             }
 
+        }
+    }
+
+    private val _isSecureExempt = MutableStateFlow(false)
+    val isSecureExempt: StateFlow<Boolean> = _isSecureExempt
+
+    private val exemptionCount = AtomicInteger(0)
+
+    fun setSecureWindowExemption(exempt: Boolean) {
+        viewModelScope.launch(Dispatchers.Main) {
+            if (exempt) {
+                if (exemptionCount.incrementAndGet() > 0) {
+                    _isSecureExempt.value = true
+                }
+            } else {
+                delay(300)
+                if (exemptionCount.decrementAndGet() <= 0) {
+                    exemptionCount.set(0)
+                    _isSecureExempt.value = false
+                }
+            }
         }
     }
 }
