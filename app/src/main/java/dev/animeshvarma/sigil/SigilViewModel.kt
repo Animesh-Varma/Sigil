@@ -40,8 +40,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
 import kotlin.system.exitProcess
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -1025,24 +1027,43 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val _isSecureExempt = MutableStateFlow(false)
-    val isSecureExempt: StateFlow<Boolean> = _isSecureExempt
-
-    private val exemptionCount = AtomicInteger(0)
-
-    fun setSecureWindowExemption(exempt: Boolean) {
-        viewModelScope.launch(Dispatchers.Main) {
-            if (exempt) {
-                if (exemptionCount.incrementAndGet() > 0) {
-                    _isSecureExempt.value = true
-                }
+    fun clearClipboardSecurely() {
+        val context = getApplication<Application>()
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                clipboard.clearPrimaryClip()
             } else {
-                delay(300)
-                if (exemptionCount.decrementAndGet() <= 0) {
-                    exemptionCount.set(0)
-                    _isSecureExempt.value = false
-                }
+                clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
             }
+            showBackgroundToast("Clipboard wiped (Security Alert)")
+            addLog("Clipboard wiped due to security alert.")
+        } catch (_: Exception) {
+        }
+    }
+
+    private val exemptDialogs = MutableStateFlow<Set<String>>(emptySet())
+
+    val isSecureExempt: StateFlow<Boolean> = exemptDialogs
+        .map { it.isNotEmpty() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
+
+    fun requestExemption(id: String) {
+        exemptDialogs.update { it + id }
+    }
+
+    fun revokeExemption(id: String) {
+        exemptDialogs.update { it - id }
+    }
+
+    fun releaseExemption(id: String) {
+        viewModelScope.launch {
+            delay(300)
+            revokeExemption(id)
         }
     }
 }

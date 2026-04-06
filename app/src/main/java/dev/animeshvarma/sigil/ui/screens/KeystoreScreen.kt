@@ -21,7 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.data.VaultEntry
-import dev.animeshvarma.sigil.ui.components.SecureAlertDialog
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
 import java.text.SimpleDateFormat
 import java.util.Date

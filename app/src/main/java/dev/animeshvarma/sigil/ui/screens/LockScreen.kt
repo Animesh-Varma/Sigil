@@ -33,7 +33,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.model.LockType
-import dev.animeshvarma.sigil.ui.components.SecureAlertDialog
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 import dev.animeshvarma.sigil.util.BiometricHelper
 
 /**

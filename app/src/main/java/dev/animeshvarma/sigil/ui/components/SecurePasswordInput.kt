@@ -28,8 +28,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import dev.animeshvarma.sigil.data.VaultEntry
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 
 /**
  * A composable password/key input with visibility toggle, integrated vault dropdown, and save/overwrite flows.
@@ -129,7 +129,7 @@ fun SecurePasswordInput(
                                 letterSpacing = 1.sp,
                                 color = MaterialTheme.colorScheme.primary
                             )
-                            KeepScreenShieldAwake(viewModel())
+                            KeepScreenShieldAwake()
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             // Save Option
@@ -233,7 +233,8 @@ fun SecurePasswordInput(
                     onClick = {
                         if (newKeyName.isNotBlank()) {
                             // CHECK FOR DUPLICATES
-                            val exists = vaultEntries.any { it.alias.equals(newKeyName, ignoreCase = true) }
+                            val exists =
+                                vaultEntries.any { it.alias.equals(newKeyName, ignoreCase = true) }
                             if (exists) {
                                 showNameDialog = false
                                 showOverwriteDialog = true

@@ -50,8 +50,8 @@ import android.os.Build
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.model.LockType
-import dev.animeshvarma.sigil.ui.components.SecureAlertDialog
-import dev.animeshvarma.sigil.ui.components.SecureDialog
+import dev.animeshvarma.sigil.util.SecureAlertDialog
+import dev.animeshvarma.sigil.util.SecureDialog
 import dev.animeshvarma.sigil.ui.components.SigilSegmentedControl
 import dev.animeshvarma.sigil.util.BiometricHelper
 import kotlin.math.atan2

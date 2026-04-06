@@ -1,9 +1,8 @@
-package dev.animeshvarma.sigil.ui.components
+package dev.animeshvarma.sigil.util
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -12,6 +11,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import dev.animeshvarma.sigil.SigilViewModel
+import dev.animeshvarma.sigil.ui.components.KeepScreenShieldAwake
 
 val LocalSigilViewModel = staticCompositionLocalOf<SigilViewModel> {
     error("SigilViewModel not provided")
@@ -34,16 +34,12 @@ fun SecureAlertDialog(
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
     properties: DialogProperties = DialogProperties()
 ) {
-    val viewModel = LocalSigilViewModel.current
-
-    DisposableEffect(Unit) {
-        viewModel.setSecureWindowExemption(true)
-        onDispose { viewModel.setSecureWindowExemption(false) }
-    }
-
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        confirmButton = confirmButton,
+        confirmButton = {
+            KeepScreenShieldAwake()
+            confirmButton()
+        },
         modifier = modifier,
         dismissButton = dismissButton,
         icon = icon,
@@ -65,16 +61,12 @@ fun SecureDialog(
     properties: DialogProperties = DialogProperties(),
     content: @Composable () -> Unit
 ) {
-    val viewModel = LocalSigilViewModel.current
-
-    DisposableEffect(Unit) {
-        viewModel.setSecureWindowExemption(true)
-        onDispose { viewModel.setSecureWindowExemption(false) }
-    }
-
     Dialog(
         onDismissRequest = onDismissRequest,
-        properties = properties,
-        content = content
-    )
+        properties = properties
+    ) {
+        // Executed inside the Dialog's window hierarchy
+        KeepScreenShieldAwake()
+        content()
+    }
 }

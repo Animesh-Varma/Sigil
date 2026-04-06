@@ -45,7 +45,7 @@ import dev.animeshvarma.sigil.data.LockManager
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.ui.OnboardingOrchestrator
 import dev.animeshvarma.sigil.ui.SigilApp
-import dev.animeshvarma.sigil.ui.components.LocalSigilViewModel
+import dev.animeshvarma.sigil.util.LocalSigilViewModel
 import dev.animeshvarma.sigil.ui.screens.LockScreen
 import dev.animeshvarma.sigil.ui.theme.SigilTheme
 import dev.animeshvarma.sigil.util.SigilPreferences
@@ -309,7 +309,7 @@ class MainActivity : AppCompatActivity() {
             val callback = ScreenCaptureCallback {
                 if (prefs.isScreenShieldEnabled) {
                     viewModel.addLog("SECURITY ALERT: OS Capture attempt detected.")
-                    viewModel.copyToClipboardSecurely("", "Wipe")
+                    viewModel.clearClipboardSecurely()
                 }
             }
             screenCaptureCallback = callback

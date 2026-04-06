@@ -57,7 +57,7 @@ import dev.animeshvarma.sigil.model.EncryptionProfile
 import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
 import dev.animeshvarma.sigil.ui.components.KeepScreenShieldAwake
-import dev.animeshvarma.sigil.ui.components.SecureAlertDialog
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 import dev.animeshvarma.sigil.ui.components.SecurePasswordInput
 import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
@@ -356,7 +356,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
     if (showAddLayerSheet) {
         ModalBottomSheet(onDismissRequest = { showAddLayerSheet = false }) {
-            KeepScreenShieldAwake(viewModel)
+            KeepScreenShieldAwake()
             AddLayerSheetContent(
                 onAdd = { algos ->
                     viewModel.addLayers(algos)
