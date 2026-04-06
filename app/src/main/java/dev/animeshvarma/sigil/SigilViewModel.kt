@@ -1066,4 +1066,11 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             revokeExemption(id)
         }
     }
+
+    private val _isScreenRecording = MutableStateFlow(false)
+    val isScreenRecording: StateFlow<Boolean> = _isScreenRecording
+
+    fun setScreenRecordingState(isRecording: Boolean) {
+        _isScreenRecording.value = isRecording
+    }
 }

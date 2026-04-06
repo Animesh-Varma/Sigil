@@ -1,13 +1,21 @@
 package dev.animeshvarma.sigil
 
+import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.Display
 import android.view.Gravity
 import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Toast
 import android.widget.FrameLayout
 import android.widget.ImageView
+import java.util.function.Consumer
+import android.annotation.SuppressLint
+import android.hardware.display.DisplayManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
@@ -63,8 +71,40 @@ class MainActivity : AppCompatActivity() {
 
     private var screenCaptureCallback: Any? = null
 
-    // Pure imperative view exclusively used for the Recents screen snapshot
     private lateinit var secureOverlayView: FrameLayout
+
+    private lateinit var displayManager: DisplayManager
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) { checkActiveDisplays() }
+        override fun onDisplayRemoved(displayId: Int) { checkActiveDisplays() }
+        override fun onDisplayChanged(displayId: Int) { checkActiveDisplays() }
+    }
+
+    private fun checkActiveDisplays() {
+        val displays = displayManager.displays
+        var isRecording = false
+
+        for (display in displays) {
+            if (display.isValid && display.state == Display.STATE_ON) {
+                @Suppress("DEPRECATION")
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                    val name = display.name.lowercase()
+                    if (name.contains("virtual") || name.contains("mirror") || name.contains("cast")) {
+                        isRecording = true
+                        break
+                    }
+                }
+            }
+        }
+
+        if (isRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
+            viewModel.addLog("SECURITY ALERT: Screen mirroring or recording detected.")
+            Toast.makeText(this, "Screen Recording Detected", Toast.LENGTH_LONG).show()
+        }
+
+        viewModel.setScreenRecordingState(isRecording)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,6 +117,10 @@ class MainActivity : AppCompatActivity() {
         updateSecureFlag()
         setupScreenCaptureCallback()
         initSecureOverlay()
+
+                displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+                displayManager.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+                checkActiveDisplays()
 
         isContentHidden.value = lockManager.isAppLocked()
 
@@ -139,9 +183,10 @@ class MainActivity : AppCompatActivity() {
                 val useDarkTheme = if (actualDynamicColor) systemDark else prefs.isDarkModeEnabled
 
                 val isExempt by viewModel.isSecureExempt.collectAsStateWithLifecycle()
+                val isScreenRecording by viewModel.isScreenRecording.collectAsStateWithLifecycle()
 
                 val applyBlur = prefs.isScreenShieldEnabled &&
-                        (!isAppInForeground.value || (!isWindowFocused.value && !isExempt))
+                        (!isAppInForeground.value || (!isWindowFocused.value && !isExempt) || isScreenRecording)
 
                 val blurRadius by animateDpAsState(
                     targetValue = if (applyBlur) 32.dp else 0.dp,
@@ -247,6 +292,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         teardownScreenCaptureCallback()
+        displayManager.unregisterDisplayListener(displayListener)
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -304,23 +350,47 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private var screenRecordingCallback: Consumer<Int>? = null
+
+    @SuppressLint("MissingPermission")
     private fun setupScreenCaptureCallback() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            val callback = ScreenCaptureCallback {
+            val captureCb = ScreenCaptureCallback {
                 if (prefs.isScreenShieldEnabled) {
                     viewModel.addLog("SECURITY ALERT: OS Capture attempt detected.")
                     viewModel.clearClipboardSecurely()
                 }
             }
-            screenCaptureCallback = callback
-            registerScreenCaptureCallback(mainExecutor, callback)
+            screenCaptureCallback = captureCb
+            registerScreenCaptureCallback(mainExecutor, captureCb)
+        }
+
+        if (Build.VERSION.SDK_INT >= 35) {
+            val recordingCb = Consumer<Int> { state ->
+                val isRecording = (state == 1)
+
+                if (isRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
+                    viewModel.addLog("SECURITY ALERT: System screen recording active.")
+                    Toast.makeText(this, "Screen Recording Detected", Toast.LENGTH_LONG).show()
+                }
+                viewModel.setScreenRecordingState(isRecording)
+            }
+            screenRecordingCallback = recordingCb
+
+            windowManager.addScreenRecordingCallback(mainExecutor, recordingCb)
         }
     }
 
+    @SuppressLint("MissingPermission")
     private fun teardownScreenCaptureCallback() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             screenCaptureCallback?.let {
                 unregisterScreenCaptureCallback(it as ScreenCaptureCallback)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 35) {
+            screenRecordingCallback?.let {
+                windowManager.removeScreenRecordingCallback(it)
             }
         }
     }
