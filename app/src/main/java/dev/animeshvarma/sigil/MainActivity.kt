@@ -121,7 +121,7 @@ class MainActivity : AppCompatActivity() {
 
         if (isRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
             viewModel.addLog("SECURITY ALERT: Screen mirroring or recording detected.")
-            Toast.makeText(this, "Screen Recording Detected", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Screen recording or mirroring detected.", Toast.LENGTH_LONG).show()
         }
 
         viewModel.setScreenRecordingState(isRecording)
@@ -147,20 +147,6 @@ class MainActivity : AppCompatActivity() {
 
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> {
-                    isAppInForeground.value = true
-                    hideSecureOverlay()
-                }
-                Lifecycle.Event.ON_PAUSE -> {
-                    isAppInForeground.value = false
-                    // Executes synchronously to block the Recents menu snapshot
-                    if (prefs.isScreenShieldEnabled) {
-                        showSecureOverlay()
-                    }
-                    if (prefs.lockMode != LockMode.NONE) {
-                        isContentHidden.value = true
-                    }
-                }
                 Lifecycle.Event.ON_STOP -> {
                     lockManager.recordBackgroundEvent()
                     if (!prefs.isGracePeriodEnabled && prefs.lockMode != LockMode.NONE) {
@@ -306,6 +292,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        isAppInForeground.value = true
+        hideSecureOverlay()
+    }
+
+    override fun onPause() {
+        isAppInForeground.value = false
+        if (prefs.isScreenShieldEnabled) {
+            showSecureOverlay()
+        }
+        if (prefs.lockMode != LockMode.NONE) {
+            isContentHidden.value = true
+        }
+        super.onPause()
+    }
+
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         isWindowFocused.value = hasFocus
@@ -388,7 +391,14 @@ class MainActivity : AppCompatActivity() {
             }
             screenRecordingCallback = recordingCb
 
-            windowManager.addScreenRecordingCallback(mainExecutor, recordingCb)
+            val initialState = windowManager.addScreenRecordingCallback(mainExecutor, recordingCb)
+            val isCurrentlyRecording = (initialState == WindowManager.SCREEN_RECORDING_STATE_VISIBLE)
+
+            if (isCurrentlyRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
+                viewModel.addLog("SECURITY ALERT: System screen recording active.")
+                Toast.makeText(this, "Screen Recording Detected", Toast.LENGTH_LONG).show()
+            }
+            viewModel.setScreenRecordingState(isCurrentlyRecording)
         }
     }
 
