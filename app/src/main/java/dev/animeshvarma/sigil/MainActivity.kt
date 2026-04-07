@@ -37,6 +37,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
@@ -70,8 +71,10 @@ class MainActivity : AppCompatActivity() {
 
     private var screenCaptureCallback: Any? = null
 
-    private val secureOverlayView: FrameLayout by lazy {
-        FrameLayout(this).apply {
+    private var secureOverlayView: FrameLayout? = null
+
+    private fun getOrCreateSecureOverlay(): FrameLayout {
+        return secureOverlayView ?: FrameLayout(this).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT
@@ -80,11 +83,12 @@ class MainActivity : AppCompatActivity() {
             elevation = 1000f
 
             val icon = ImageView(this@MainActivity).apply {
-                setImageResource(android.R.drawable.ic_lock_idle_lock)
+                setImageResource(android.R.drawable.ic_lock_idle_lock) // System-native lock icon
                 layoutParams = FrameLayout.LayoutParams(150, 150, Gravity.CENTER)
                 setColorFilter("#808080".toColorInt())
             }
             addView(icon)
+            secureOverlayView = this
         }
     }
 
@@ -131,7 +135,7 @@ class MainActivity : AppCompatActivity() {
         prefs = SigilPreferences(this)
         lockManager = LockManager(this)
 
-        updateSecureFlag()
+        updateSecureFlag(prefs.isScreenShieldEnabled)
         setupScreenCaptureCallback()
 
         displayManager?.let {
@@ -164,7 +168,7 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
                 Lifecycle.Event.ON_START -> {
-                    updateSecureFlag()
+                    updateSecureFlag(prefs.isScreenShieldEnabled)
                     if (lockManager.isAppLocked()) {
                         isContentHidden.value = true
                         viewModel.clearSensitiveData()
@@ -203,6 +207,10 @@ class MainActivity : AppCompatActivity() {
                 val isScreenRecording by viewModel.isScreenRecording.collectAsStateWithLifecycle()
 
                 val isScreenShieldEnabled by viewModel.isScreenShieldEnabled.collectAsStateWithLifecycle()
+
+                LaunchedEffect(isScreenShieldEnabled) {
+                    updateSecureFlag(isScreenShieldEnabled)
+                }
 
                 val applyBlur = isScreenShieldEnabled &&
                         (!isAppInForeground.value || (!isWindowFocused.value && !isExempt) || isScreenRecording)
@@ -303,7 +311,7 @@ class MainActivity : AppCompatActivity() {
         isWindowFocused.value = hasFocus
 
         if (hasFocus) {
-            updateSecureFlag()
+            updateSecureFlag(prefs.isScreenShieldEnabled)
         }
         // Compose state naturally reacts to isWindowFocused now, ensuring perfect sync.
     }
@@ -330,20 +338,23 @@ class MainActivity : AppCompatActivity() {
     // --- NATIVE RECENTS SHIELD ---
     private fun showSecureOverlay() {
         val root = window.decorView as ViewGroup
-        if (secureOverlayView.parent == null) {
-            root.addView(secureOverlayView)
+        val overlay = getOrCreateSecureOverlay()
+        if (overlay.parent == null) {
+            root.addView(overlay)
         }
     }
 
     private fun hideSecureOverlay() {
-        val root = window.decorView as ViewGroup
-        if (secureOverlayView.parent != null) {
-            root.removeView(secureOverlayView)
+        secureOverlayView?.let { overlay ->
+            val root = window.decorView as ViewGroup
+            if (overlay.parent != null) {
+                root.removeView(overlay)
+            }
         }
     }
 
-    private fun updateSecureFlag() {
-        if (prefs.isScreenShieldEnabled) {
+    private fun updateSecureFlag(isSecure: Boolean) {
+        if (isSecure) {
             window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         } else {
             window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
