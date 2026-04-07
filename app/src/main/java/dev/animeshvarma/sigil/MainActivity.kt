@@ -183,7 +183,9 @@ class MainActivity : AppCompatActivity() {
                 val isExempt by viewModel.isSecureExempt.collectAsStateWithLifecycle()
                 val isScreenRecording by viewModel.isScreenRecording.collectAsStateWithLifecycle()
 
-                val applyBlur = prefs.isScreenShieldEnabled &&
+                val isScreenShieldEnabled by viewModel.isScreenShieldEnabled.collectAsStateWithLifecycle()
+
+                val applyBlur = isScreenShieldEnabled &&
                         (!isAppInForeground.value || (!isWindowFocused.value && !isExempt) || isScreenRecording)
 
                 val blurRadius by animateDpAsState(

@@ -287,7 +287,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
             trailing = {
                 Switch(checked = screenShield, onCheckedChange = {
                     screenShield = it
-                    prefs.isScreenShieldEnabled = it
+                    viewModel.setScreenShieldEnabled(it)
                 })
             }
         )
@@ -940,6 +940,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
                             graceEnabled = freshPrefs.isGracePeriodEnabled
                             graceMinutes = freshPrefs.graceDurationMinutes.toFloat()
                             screenShield = freshPrefs.isScreenShieldEnabled
+                            viewModel.setScreenShieldEnabled(freshPrefs.isScreenShieldEnabled)
                             clipTimeout = freshPrefs.clipboardTimeoutSeconds.toFloat()
                         }
 

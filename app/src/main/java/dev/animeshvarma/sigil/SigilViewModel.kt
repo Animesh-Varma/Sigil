@@ -1068,6 +1068,14 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    private val _isScreenShieldEnabled = MutableStateFlow(prefs.isScreenShieldEnabled)
+    val isScreenShieldEnabled: StateFlow<Boolean> = _isScreenShieldEnabled
+
+    fun setScreenShieldEnabled(enabled: Boolean) {
+        prefs.isScreenShieldEnabled = enabled
+        _isScreenShieldEnabled.value = enabled
+    }
+
     private val _isScreenRecording = MutableStateFlow(false)
     val isScreenRecording: StateFlow<Boolean> = _isScreenRecording
 
