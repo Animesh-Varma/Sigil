@@ -369,7 +369,7 @@ class MainActivity : AppCompatActivity() {
 
         if (Build.VERSION.SDK_INT >= 35) {
             val recordingCb = Consumer<Int> { state ->
-                val isRecording = (state == 1)
+                val isRecording = (state == WindowManager.SCREEN_RECORDING_STATE_VISIBLE)
 
                 if (isRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
                     viewModel.addLog("SECURITY ALERT: System screen recording active.")
