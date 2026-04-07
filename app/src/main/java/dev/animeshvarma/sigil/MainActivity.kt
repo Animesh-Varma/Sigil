@@ -70,7 +70,23 @@ class MainActivity : AppCompatActivity() {
 
     private var screenCaptureCallback: Any? = null
 
-    private lateinit var secureOverlayView: FrameLayout
+    private val secureOverlayView: FrameLayout by lazy {
+        FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor("#121212".toColorInt())
+            elevation = 1000f
+
+            val icon = ImageView(this@MainActivity).apply {
+                setImageResource(android.R.drawable.ic_lock_idle_lock)
+                layoutParams = FrameLayout.LayoutParams(150, 150, Gravity.CENTER)
+                setColorFilter("#808080".toColorInt())
+            }
+            addView(icon)
+        }
+    }
 
     private val displayManager: DisplayManager? by lazy {
         if (Build.VERSION.SDK_INT < 35) {
@@ -117,7 +133,6 @@ class MainActivity : AppCompatActivity() {
 
         updateSecureFlag()
         setupScreenCaptureCallback()
-        initSecureOverlay()
 
         displayManager?.let {
             it.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
@@ -313,25 +328,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     // --- NATIVE RECENTS SHIELD ---
-    private fun initSecureOverlay() {
-        secureOverlayView = FrameLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
-            )
-            // Pure dark background for maximum Recents menu security
-            setBackgroundColor("#121212".toColorInt())
-            elevation = 1000f
-
-            val icon = ImageView(this@MainActivity).apply {
-                setImageResource(android.R.drawable.ic_lock_idle_lock) // Generic lock icon fallback
-                layoutParams = FrameLayout.LayoutParams(150, 150, Gravity.CENTER)
-                setColorFilter("#808080".toColorInt())
-            }
-            addView(icon)
-        }
-    }
-
     private fun showSecureOverlay() {
         val root = window.decorView as ViewGroup
         if (secureOverlayView.parent == null) {
