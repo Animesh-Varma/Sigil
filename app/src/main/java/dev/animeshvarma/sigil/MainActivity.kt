@@ -72,7 +72,11 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var secureOverlayView: FrameLayout
 
-    private lateinit var displayManager: DisplayManager
+    private val displayManager: DisplayManager? by lazy {
+        if (Build.VERSION.SDK_INT < 35) {
+            getSystemService(DISPLAY_SERVICE) as DisplayManager
+        } else null
+    }
 
     private val displayListener = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(displayId: Int) { checkActiveDisplays() }
@@ -81,7 +85,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkActiveDisplays() {
-        val displays = displayManager.displays
+        val manager = displayManager ?: return
+        val displays = manager.displays
         var isRecording = false
 
         for (display in displays) {
@@ -114,9 +119,8 @@ class MainActivity : AppCompatActivity() {
         setupScreenCaptureCallback()
         initSecureOverlay()
 
-        if (Build.VERSION.SDK_INT < 35) {
-            displayManager = getSystemService(DISPLAY_SERVICE) as DisplayManager
-            displayManager.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+        displayManager?.let {
+            it.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
             checkActiveDisplays()
         }
 
@@ -252,7 +256,7 @@ class MainActivity : AppCompatActivity() {
                         // 2. COMPOSE SHIELD OVERLAY
                         AnimatedVisibility(
                             visible = applyBlur,
-                            enter = fadeIn(tween(if (applyBlur) 0 else 300)),
+                            enter = fadeIn(tween(0)),
                             exit = fadeOut(tween(300))
                         ) {
                             Box(
@@ -292,9 +296,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         teardownScreenCaptureCallback()
-        if (Build.VERSION.SDK_INT < 35 && ::displayManager.isInitialized) {
-            displayManager.unregisterDisplayListener(displayListener)
-        }
+        displayManager?.unregisterDisplayListener(displayListener)
     }
 
     override fun onNewIntent(intent: Intent) {
