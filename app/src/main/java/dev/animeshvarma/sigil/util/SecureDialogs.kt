@@ -10,6 +10,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.SecureFlagPolicy
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.ui.components.KeepScreenShieldAwake
 
@@ -32,14 +33,14 @@ fun SecureAlertDialog(
     titleContentColor: Color = AlertDialogDefaults.titleContentColor,
     textContentColor: Color = AlertDialogDefaults.textContentColor,
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
-    properties: DialogProperties = DialogProperties()
+    properties: DialogProperties = DialogProperties(
+        securePolicy = SecureFlagPolicy.SecureOn
+    )
 ) {
+    KeepScreenShieldAwake()
     AlertDialog(
         onDismissRequest = onDismissRequest,
-        confirmButton = {
-            KeepScreenShieldAwake()
-            confirmButton()
-        },
+        confirmButton = confirmButton,
         modifier = modifier,
         dismissButton = dismissButton,
         icon = icon,
@@ -58,7 +59,9 @@ fun SecureAlertDialog(
 @Composable
 fun SecureDialog(
     onDismissRequest: () -> Unit,
-    properties: DialogProperties = DialogProperties(),
+    properties: DialogProperties = DialogProperties(
+        securePolicy = SecureFlagPolicy.SecureOn
+    ),
     content: @Composable () -> Unit
 ) {
     Dialog(

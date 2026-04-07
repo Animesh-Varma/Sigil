@@ -1,6 +1,5 @@
 package dev.animeshvarma.sigil
 
-import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
@@ -87,13 +86,10 @@ class MainActivity : AppCompatActivity() {
 
         for (display in displays) {
             if (display.isValid && display.state == Display.STATE_ON) {
-                @Suppress("DEPRECATION")
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-                    val name = display.name.lowercase()
-                    if (name.contains("virtual") || name.contains("mirror") || name.contains("cast")) {
-                        isRecording = true
-                        break
-                    }
+                val name = display.name.lowercase()
+                if (name.contains("virtual") || name.contains("mirror") || name.contains("cast")) {
+                    isRecording = true
+                    break
                 }
             }
         }
@@ -118,9 +114,11 @@ class MainActivity : AppCompatActivity() {
         setupScreenCaptureCallback()
         initSecureOverlay()
 
-                displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-                displayManager.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
-                checkActiveDisplays()
+        if (Build.VERSION.SDK_INT < 35) {
+            displayManager = getSystemService(DISPLAY_SERVICE) as DisplayManager
+            displayManager.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+            checkActiveDisplays()
+        }
 
         isContentHidden.value = lockManager.isAppLocked()
 
@@ -292,7 +290,9 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         teardownScreenCaptureCallback()
-        displayManager.unregisterDisplayListener(displayListener)
+        if (Build.VERSION.SDK_INT < 35 && ::displayManager.isInitialized) {
+            displayManager.unregisterDisplayListener(displayListener)
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

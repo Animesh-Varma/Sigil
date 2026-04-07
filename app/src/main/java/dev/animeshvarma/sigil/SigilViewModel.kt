@@ -1020,8 +1020,8 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                     showBackgroundToast("Sigil: Clipboard auto-wiped.")
                     addLog("Clipboard auto-wiped.")
                 }
-            } catch (_: Exception) {
-                // Clipboard may have been cleared externally or access denied
+            } catch (e: Exception) {
+                android.util.Log.d("SigilViewModel", "Clipboard auto-wipe failed: ${e.message}")
             }
 
         }
@@ -1038,7 +1038,8 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
             }
             showBackgroundToast("Clipboard wiped (Security Alert)")
             addLog("Clipboard wiped due to security alert.")
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            android.util.Log.d("SigilViewModel", "Clipboard wipe failed: ${e.message}")
         }
     }
 
@@ -1062,7 +1063,7 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
     fun releaseExemption(id: String) {
         viewModelScope.launch {
-            delay(300)
+            delay(50)
             revokeExemption(id)
         }
     }

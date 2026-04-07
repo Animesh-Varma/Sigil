@@ -176,7 +176,6 @@ fun KeepScreenShieldAwake() {
         viewModel.requestExemption(dialogId)
 
         onDispose {
-            // Cleanup when the dialog is permanently closed (handles the flicker delay)
             viewModel.releaseExemption(dialogId)
         }
     }
@@ -187,9 +186,6 @@ fun KeepScreenShieldAwake() {
             // Dialog regained focus (e.g. shade pushed up)
             viewModel.requestExemption(dialogId)
         } else {
-            // Dialog lost focus. BUT newly created dialogs also start with isFocused = false!
-            // Wait 300ms. If it's a new dialog, it gets focus within 50ms and cancels this delay.
-            // If it's the notification shade, the delay finishes and the shield comes up.
             kotlinx.coroutines.delay(300)
             viewModel.revokeExemption(dialogId)
         }
