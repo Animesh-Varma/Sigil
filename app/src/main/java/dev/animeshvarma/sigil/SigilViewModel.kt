@@ -41,6 +41,9 @@ import java.util.Date
 import java.util.Locale
 import java.util.UUID
 import kotlin.system.exitProcess
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -1017,10 +1020,66 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
                     showBackgroundToast("Sigil: Clipboard auto-wiped.")
                     addLog("Clipboard auto-wiped.")
                 }
-            } catch (_: Exception) {
-                // Clipboard may have been cleared externally or access denied
+            } catch (e: Exception) {
+                android.util.Log.d("SigilViewModel", "Clipboard auto-wipe failed: ${e.message}")
             }
 
         }
+    }
+
+    fun clearClipboardSecurely() {
+        val context = getApplication<Application>()
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                clipboard.clearPrimaryClip()
+            } else {
+                clipboard.setPrimaryClip(ClipData.newPlainText("", ""))
+            }
+            showBackgroundToast("Clipboard wiped (Security Alert)")
+            addLog("Clipboard wiped due to security alert.")
+        } catch (e: Exception) {
+            android.util.Log.d("SigilViewModel", "Clipboard wipe failed: ${e.message}")
+        }
+    }
+
+    private val exemptDialogs = MutableStateFlow<Set<String>>(emptySet())
+
+    val isSecureExempt: StateFlow<Boolean> = exemptDialogs
+        .map { it.isNotEmpty() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Eagerly,
+            initialValue = false
+        )
+
+    fun requestExemption(id: String) {
+        exemptDialogs.update { it + id }
+    }
+
+    fun revokeExemption(id: String) {
+        exemptDialogs.update { it - id }
+    }
+
+    fun releaseExemption(id: String) {
+        viewModelScope.launch {
+            delay(50)
+            revokeExemption(id)
+        }
+    }
+
+    private val _isScreenShieldEnabled = MutableStateFlow(prefs.isScreenShieldEnabled)
+    val isScreenShieldEnabled: StateFlow<Boolean> = _isScreenShieldEnabled
+
+    fun setScreenShieldEnabled(enabled: Boolean) {
+        prefs.isScreenShieldEnabled = enabled
+        _isScreenShieldEnabled.value = enabled
+    }
+
+    private val _isScreenRecording = MutableStateFlow(false)
+    val isScreenRecording: StateFlow<Boolean> = _isScreenRecording
+
+    fun setScreenRecordingState(isRecording: Boolean) {
+        _isScreenRecording.value = isRecording
     }
 }

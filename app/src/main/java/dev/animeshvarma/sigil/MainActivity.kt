@@ -1,31 +1,64 @@
 package dev.animeshvarma.sigil
 
 import android.content.Intent
-import android.os.Bundle
 import android.os.Build
+import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.Display
+import android.view.Gravity
+import android.view.ViewGroup
 import android.view.WindowManager
+import android.widget.Toast
+import android.widget.FrameLayout
+import android.widget.ImageView
+import java.util.function.Consumer
+import android.annotation.SuppressLint
+import android.hardware.display.DisplayManager
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.animeshvarma.sigil.data.LockManager
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.ui.OnboardingOrchestrator
 import dev.animeshvarma.sigil.ui.SigilApp
+import dev.animeshvarma.sigil.util.LocalSigilViewModel
 import dev.animeshvarma.sigil.ui.screens.LockScreen
 import dev.animeshvarma.sigil.ui.theme.SigilTheme
 import dev.animeshvarma.sigil.util.SigilPreferences
+import androidx.core.graphics.toColorInt
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,17 +67,67 @@ class MainActivity : AppCompatActivity() {
     private lateinit var prefs: SigilPreferences
 
     private val isContentHidden = mutableStateOf(true)
+    private val isAppInForeground = mutableStateOf(true)
+    private val isWindowFocused = mutableStateOf(true)
 
-    /**
-     * Initializes the activity UI, security, lifecycle observers, onboarding state, intent handling, and Compose content.
-     *
-     * Sets up edge-to-edge rendering, view model, preferences, and lock manager; applies screen security flags; initializes
-     * the content-hidden state from the lock manager; registers a lifecycle observer to hide content on pause, record
-     * background events and clear sensitive data on stop (when configured), and re-evaluate secure flag and content visibility
-     * on start. Checks and processes incoming share intents, determines whether onboarding should be shown, and composes
-     * the app UI: shows a lock screen when content is hidden and locking is enabled, otherwise displays the main app with
-     * theming and onboarding orchestration.
-     */
+    private var screenCaptureCallback: Any? = null
+
+    private var secureOverlayView: FrameLayout? = null
+
+    private fun getOrCreateSecureOverlay(): FrameLayout {
+        return secureOverlayView ?: FrameLayout(this).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
+            )
+            setBackgroundColor("#121212".toColorInt())
+            elevation = 1000f
+
+            val icon = ImageView(this@MainActivity).apply {
+                setImageResource(android.R.drawable.ic_lock_idle_lock) // System-native lock icon
+                layoutParams = FrameLayout.LayoutParams(150, 150, Gravity.CENTER)
+                setColorFilter("#808080".toColorInt())
+            }
+            addView(icon)
+            secureOverlayView = this
+        }
+    }
+
+    private val displayManager: DisplayManager? by lazy {
+        if (Build.VERSION.SDK_INT < 35) {
+            getSystemService(DISPLAY_SERVICE) as DisplayManager
+        } else null
+    }
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) { checkActiveDisplays() }
+        override fun onDisplayRemoved(displayId: Int) { checkActiveDisplays() }
+        override fun onDisplayChanged(displayId: Int) { checkActiveDisplays() }
+    }
+
+    private fun checkActiveDisplays() {
+        val manager = displayManager ?: return
+        val displays = manager.displays
+        var isRecording = false
+
+        for (display in displays) {
+            if (display.isValid && display.state == Display.STATE_ON) {
+                val name = display.name.lowercase()
+                if (name.contains("virtual") || name.contains("mirror") || name.contains("cast")) {
+                    isRecording = true
+                    break
+                }
+            }
+        }
+
+        if (isRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
+            viewModel.addLog("SECURITY ALERT: Screen mirroring or recording detected.")
+            Toast.makeText(this, "Screen recording or mirroring detected.", Toast.LENGTH_LONG).show()
+        }
+
+        viewModel.setScreenRecordingState(isRecording)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -53,28 +136,26 @@ class MainActivity : AppCompatActivity() {
         prefs = SigilPreferences(this)
         lockManager = LockManager(this)
 
-        updateSecureFlag()
+        updateSecureFlag(prefs.isScreenShieldEnabled)
+        setupScreenCaptureCallback()
+
+        displayManager?.let {
+            it.registerDisplayListener(displayListener, Handler(Looper.getMainLooper()))
+            checkActiveDisplays()
+        }
 
         isContentHidden.value = lockManager.isAppLocked()
 
-        // --- LIFECYCLE SECURITY OBSERVER ---
         lifecycle.addObserver(LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_PAUSE -> {
-                    if (prefs.lockMode != LockMode.NONE) {
-                        isContentHidden.value = true
-                    }
-                }
                 Lifecycle.Event.ON_STOP -> {
                     lockManager.recordBackgroundEvent()
-
                     if (!prefs.isGracePeriodEnabled && prefs.lockMode != LockMode.NONE) {
                         viewModel.clearSensitiveData()
                     }
                 }
                 Lifecycle.Event.ON_START -> {
-                    updateSecureFlag()
-
+                    updateSecureFlag(prefs.isScreenShieldEnabled)
                     if (lockManager.isAppLocked()) {
                         isContentHidden.value = true
                         viewModel.clearSensitiveData()
@@ -86,7 +167,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // Onboarding Check
         val isFirstLaunch = !prefs.hasCompletedOnboarding()
         val showOnboarding = mutableStateOf(isFirstLaunch)
 
@@ -97,52 +177,123 @@ class MainActivity : AppCompatActivity() {
         checkAndProcessIntent(intent, viewModel)
 
         setContent {
-            val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
-            val systemDark = isSystemInDarkTheme()
+            CompositionLocalProvider(LocalSigilViewModel provides viewModel) {
 
-            // 1. Force dynamic colors off on API < 31
-            val actualDynamicColor = supportsDynamicColor && prefs.isDynamicColorsEnabled
+                val view = LocalView.current
+                DisposableEffect(Unit) {
+                    view.filterTouchesWhenObscured = true
+                    onDispose { }
+                }
 
-            // 2. If Material You is ON, follow system. Otherwise, strictly follow the manual toggle!
-            val useDarkTheme = if (actualDynamicColor) systemDark else prefs.isDarkModeEnabled
+                val supportsDynamicColor = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+                val systemDark = isSystemInDarkTheme()
+                val actualDynamicColor = supportsDynamicColor && prefs.isDynamicColorsEnabled
+                val useDarkTheme = if (actualDynamicColor) systemDark else prefs.isDarkModeEnabled
 
-            SigilTheme(
-                darkTheme = useDarkTheme,
-                dynamicColor = actualDynamicColor,
-                seedColor = prefs.selectedThemeColor
-            ) {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Box(modifier = Modifier.padding(innerPadding)) {
+                val isExempt by viewModel.isSecureExempt.collectAsStateWithLifecycle()
+                val isScreenRecording by viewModel.isScreenRecording.collectAsStateWithLifecycle()
 
-                        val isLocked = isContentHidden.value && prefs.lockMode != LockMode.NONE
+                val isScreenShieldEnabled by viewModel.isScreenShieldEnabled.collectAsStateWithLifecycle()
 
-                        Crossfade(
-                            targetState = isLocked,
-                            animationSpec = tween(400),
-                            label = "LockScreenTransition"
-                        ) { locked ->
-                            if (locked) {
-                                LockScreen(
-                                    viewModel = viewModel,
-                                    onUnlock = {
-                                        isContentHidden.value = false
-                                        viewModel.consumePendingIntent()
-                                    }
+                LaunchedEffect(isScreenShieldEnabled) {
+                    updateSecureFlag(isScreenShieldEnabled)
+                }
+
+                val applyBlur = isScreenShieldEnabled &&
+                        (!isAppInForeground.value || (!isWindowFocused.value && !isExempt) || isScreenRecording)
+
+                val blurRadius by animateDpAsState(
+                    targetValue = if (applyBlur) 32.dp else 0.dp,
+                    animationSpec = tween(if (applyBlur) 0 else 300),
+                    label = "SecureBlur"
+                )
+
+                SigilTheme(
+                    darkTheme = useDarkTheme,
+                    dynamicColor = actualDynamicColor,
+                    seedColor = prefs.selectedThemeColor
+                ) {
+                    Box(modifier = Modifier.fillMaxSize()) {
+
+                        // 1. MAIN APP CONTENT WITH BLUR
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .then(
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                                        Modifier.blur(radius = blurRadius)
+                                    } else Modifier
                                 )
-                            } else {
-                                Box(modifier = Modifier.fillMaxSize()) {
-                                    SigilApp(viewModel = viewModel)
+                        ) {
+                            Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                                Box(modifier = Modifier.padding(innerPadding)) {
 
-                                    if (showOnboarding.value) {
-                                        OnboardingOrchestrator(
-                                            viewModel = viewModel,
-                                            onComplete = {
-                                                prefs.setOnboardingCompleted(true)
-                                                showOnboarding.value = false
+                                    val isLocked = isContentHidden.value && prefs.lockMode != LockMode.NONE
+
+                                    Crossfade(
+                                        targetState = isLocked,
+                                        animationSpec = tween(400),
+                                        label = "LockScreenTransition"
+                                    ) { locked ->
+                                        if (locked) {
+                                            LockScreen(
+                                                viewModel = viewModel,
+                                                onUnlock = {
+                                                    isContentHidden.value = false
+                                                    viewModel.consumePendingIntent()
+                                                }
+                                            )
+                                        } else {
+                                            Box(modifier = Modifier.fillMaxSize()) {
+                                                SigilApp(viewModel = viewModel)
+
+                                                if (showOnboarding.value) {
+                                                    OnboardingOrchestrator(
+                                                        viewModel = viewModel,
+                                                        onComplete = {
+                                                            prefs.setOnboardingCompleted(true)
+                                                            showOnboarding.value = false
+                                                        }
+                                                    )
+                                                }
                                             }
-                                        )
+                                        }
                                     }
                                 }
+                            }
+                        }
+
+                        // 2. COMPOSE SHIELD OVERLAY
+                        AnimatedVisibility(
+                            visible = applyBlur,
+                            enter = fadeIn(tween(0)),
+                            exit = fadeOut(tween(300))
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(
+                                        MaterialTheme.colorScheme.background.copy(
+                                            alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.6f else 1.0f
+                                        )
+                                    )
+                                    .pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                                    .changes
+                                                    .forEach { it.consume() }
+                                            }
+                                        }
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = "Screen Shield Active",
+                                    modifier = Modifier.size(72.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
                             }
                         }
                     }
@@ -151,22 +302,41 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Handle a newly delivered intent, update the activity's current intent, and process any shared content it carries.
-     *
-     * @param intent The new Intent delivered to the activity.
-     */
+    override fun onResume() {
+        super.onResume()
+        isAppInForeground.value = true
+        hideSecureOverlay()
+    }
+
+    override fun onPause() {
+        isAppInForeground.value = false
+        if (prefs.isScreenShieldEnabled) {
+            showSecureOverlay()
+        }
+        super.onPause()
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        isWindowFocused.value = hasFocus
+
+        if (hasFocus) {
+            updateSecureFlag(prefs.isScreenShieldEnabled)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        teardownScreenCaptureCallback()
+        displayManager?.unregisterDisplayListener(displayListener)
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         checkAndProcessIntent(intent, viewModel)
     }
 
-    /**
-     * Ensures sensitive in-memory data is cleared when saving instance state if a lock mode is enabled.
-     *
-     * @param outState Bundle in which to place saved state.
-     */
     override fun onSaveInstanceState(outState: Bundle) {
         if (prefs.lockMode != LockMode.NONE) {
             viewModel.clearSensitiveData()
@@ -174,14 +344,84 @@ class MainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    /**
-     * Processes an incoming ACTION_SEND "text/plain" intent by either handling its shared text immediately or caching it for later.
-     *
-     * If the intent contains EXTRA_TEXT, the extra is removed from the intent. If the app content is currently hidden or a lock mode is enabled, the shared text is cached via the view model and the content is marked hidden; otherwise the shared text is delivered to the view model for immediate handling. Non-matching or null intents are ignored.
-     *
-     * @param intent The incoming intent that may contain shared text (may be null).
-     * @param viewModel The view model used to handle or cache the shared text.
-     */
+    // --- NATIVE RECENTS SHIELD ---
+    private fun showSecureOverlay() {
+        val root = window.decorView as ViewGroup
+        val overlay = getOrCreateSecureOverlay()
+        if (overlay.parent == null) {
+            root.addView(overlay)
+        }
+    }
+
+    private fun hideSecureOverlay() {
+        secureOverlayView?.let { overlay ->
+            val root = window.decorView as ViewGroup
+            if (overlay.parent != null) {
+                root.removeView(overlay)
+            }
+        }
+    }
+
+    private fun updateSecureFlag(isSecure: Boolean) {
+        if (isSecure) {
+            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        } else {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+        }
+    }
+
+    private var screenRecordingCallback: Consumer<Int>? = null
+
+    @SuppressLint("MissingPermission")
+    private fun setupScreenCaptureCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val captureCb = ScreenCaptureCallback {
+                if (prefs.isScreenShieldEnabled) {
+                    viewModel.addLog("SECURITY ALERT: OS Capture attempt detected.")
+                    viewModel.clearClipboardSecurely()
+                }
+            }
+            screenCaptureCallback = captureCb
+            registerScreenCaptureCallback(mainExecutor, captureCb)
+        }
+
+        if (Build.VERSION.SDK_INT >= 35) {
+            val recordingCb = Consumer<Int> { state ->
+                val isRecording = (state == WindowManager.SCREEN_RECORDING_STATE_VISIBLE)
+
+                if (isRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
+                    viewModel.addLog("SECURITY ALERT: System screen recording active.")
+                    Toast.makeText(this, "Screen Recording Detected", Toast.LENGTH_LONG).show()
+                }
+                viewModel.setScreenRecordingState(isRecording)
+            }
+            screenRecordingCallback = recordingCb
+
+            val initialState = windowManager.addScreenRecordingCallback(mainExecutor, recordingCb)
+            val isCurrentlyRecording = (initialState == WindowManager.SCREEN_RECORDING_STATE_VISIBLE)
+
+            if (isCurrentlyRecording && !viewModel.isScreenRecording.value && prefs.isScreenShieldEnabled) {
+                viewModel.addLog("SECURITY ALERT: System screen recording active.")
+                Toast.makeText(this, "Screen Recording Detected", Toast.LENGTH_LONG).show()
+            }
+            viewModel.setScreenRecordingState(isCurrentlyRecording)
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun teardownScreenCaptureCallback() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            screenCaptureCallback?.let {
+                unregisterScreenCaptureCallback(it as ScreenCaptureCallback)
+            }
+        }
+        if (Build.VERSION.SDK_INT >= 35) {
+            screenRecordingCallback?.let {
+                windowManager.removeScreenRecordingCallback(it)
+            }
+        }
+    }
+
     private fun checkAndProcessIntent(intent: Intent?, viewModel: SigilViewModel) {
         if (intent?.action == Intent.ACTION_SEND && intent.type == "text/plain") {
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let { sharedText ->
@@ -195,14 +435,6 @@ class MainActivity : AppCompatActivity() {
                     viewModel.handleIncomingSharedText(sharedText)
                 }
             }
-        }
-    }
-
-    private fun updateSecureFlag() {
-        if (prefs.isScreenShieldEnabled) {
-            window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
-        } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
         }
     }
 }

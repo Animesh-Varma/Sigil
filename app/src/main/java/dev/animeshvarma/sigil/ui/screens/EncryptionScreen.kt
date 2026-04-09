@@ -45,6 +45,8 @@ import dev.animeshvarma.sigil.model.AlgorithmRegistry
 import dev.animeshvarma.sigil.model.EncryptionProfile
 import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
+import dev.animeshvarma.sigil.ui.components.KeepScreenShieldAwake
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 import dev.animeshvarma.sigil.ui.components.SecurePasswordInput
 import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 
@@ -194,6 +196,7 @@ fun EncryptionInterface(viewModel: SigilViewModel, uiState: UiState) {
     // --- PROFILE SELECTION SHEET ---
     if (showProfileSheet) {
         ModalBottomSheet(onDismissRequest = { showProfileSheet = false }) {
+            KeepScreenShieldAwake()
             Column(Modifier.padding(horizontal = 16.dp)) {
                 // Header
                 Row(
@@ -545,7 +548,7 @@ private fun AlgorithmInfoDialog(
     onDismiss: () -> Unit
 ) {
     val details = AlgorithmRegistry.supportedAlgorithms.find { it.id == algo.name }
-    AlertDialog(
+    SecureAlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Info, null) },
         title = { Text(details?.name ?: algo.name) },

@@ -1,6 +1,4 @@
-*.iml
 .gradle
-/local.properties
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
@@ -12,7 +10,6 @@
 /captures
 .externalNativeBuild
 .cxx
-local.properties
 /.idea/deploymentTargetSelector.xml
 /.idea/migrations.xml
 
@@ -68,3 +65,6 @@ captures/
 
 # Google Services (if you ever add Firebase)
 google-services.json
+
+/app/release/
+/app/debug/

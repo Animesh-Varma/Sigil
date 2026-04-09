@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.data.VaultEntry
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 
 /**
  * A composable password/key input with visibility toggle, integrated vault dropdown, and save/overwrite flows.
@@ -128,7 +129,7 @@ fun SecurePasswordInput(
                                 letterSpacing = 1.sp,
                                 color = MaterialTheme.colorScheme.primary
                             )
-
+                            KeepScreenShieldAwake()
                             HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                             // Save Option
@@ -209,7 +210,7 @@ fun SecurePasswordInput(
 
     // SAVE KEY DIALOG
     if (showNameDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showNameDialog = false },
             icon = { Icon(Icons.Default.Save, null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text("Save to Vault") },
@@ -232,7 +233,8 @@ fun SecurePasswordInput(
                     onClick = {
                         if (newKeyName.isNotBlank()) {
                             // CHECK FOR DUPLICATES
-                            val exists = vaultEntries.any { it.alias.equals(newKeyName, ignoreCase = true) }
+                            val exists =
+                                vaultEntries.any { it.alias.equals(newKeyName, ignoreCase = true) }
                             if (exists) {
                                 showNameDialog = false
                                 showOverwriteDialog = true
@@ -253,7 +255,7 @@ fun SecurePasswordInput(
 
     // OVERWRITE WARNING DIALOG
     if (showOverwriteDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showOverwriteDialog = false },
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Key Exists") },

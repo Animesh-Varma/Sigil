@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.data.VaultEntry
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -105,7 +106,7 @@ fun KeystoreContent(
 
     // 1. DELETE CONFIRMATION
     if (entryToDelete != null) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { entryToDelete = null },
             icon = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Delete Key?") },
@@ -125,7 +126,7 @@ fun KeystoreContent(
 
     // 2. RENAME DIALOG
     if (entryToRename != null) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { entryToRename = null },
             icon = { Icon(Icons.Default.Edit, null) },
             title = { Text("Rename Key") },
@@ -152,7 +153,7 @@ fun KeystoreContent(
 
     // 3. SECURITY WARNING (Shoulder Surfing)
     if (entryToWarn != null) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { entryToWarn = null },
             icon = { Icon(Icons.Default.Visibility, null, tint = MaterialTheme.colorScheme.primary) },
             title = { Text("Reveal Secret Key?") },
@@ -173,7 +174,7 @@ fun KeystoreContent(
 
     // 4. VIEW KEY
     if (entryToView != null) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { entryToView = null; revealedKey = "" },
             title = { Text(entryToView?.alias ?: "Key") },
             text = {

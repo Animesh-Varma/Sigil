@@ -16,6 +16,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.window.DialogWindowProvider
+import dev.animeshvarma.sigil.util.LocalSigilViewModel
 
 @Composable
 fun SigilButtonGroup(
@@ -150,4 +156,38 @@ fun StyledLayerContainer(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         content = content
     )
+}
+
+@Composable
+fun KeepScreenShieldAwake() {
+    val viewModel = LocalSigilViewModel.current
+    val view = LocalView.current
+    val isFocused = LocalWindowInfo.current.isWindowFocused
+
+    // Give this specific dialog instance a unique ID
+    val dialogId = remember { java.util.UUID.randomUUID().toString() }
+
+    DisposableEffect(Unit) {
+        // 1. Protect the Window UI from Tapjacking
+        view.filterTouchesWhenObscured = true
+        (view.parent as? DialogWindowProvider)?.window?.decorView?.filterTouchesWhenObscured = true
+
+        // 2. Pre-emptively exempt the blur the instant the dialog renders
+        viewModel.requestExemption(dialogId)
+
+        onDispose {
+            viewModel.releaseExemption(dialogId)
+        }
+    }
+
+    // 3. React to temporary focus loss (e.g., Notification Shade)
+    LaunchedEffect(isFocused) {
+        if (isFocused) {
+            // Dialog regained focus (e.g. shade pushed up)
+            viewModel.requestExemption(dialogId)
+        } else {
+            kotlinx.coroutines.delay(300)
+            viewModel.revokeExemption(dialogId)
+        }
+    }
 }

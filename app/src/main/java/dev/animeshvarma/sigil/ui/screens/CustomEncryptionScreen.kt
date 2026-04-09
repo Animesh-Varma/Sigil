@@ -56,6 +56,8 @@ import dev.animeshvarma.sigil.model.AlgorithmRegistry
 import dev.animeshvarma.sigil.model.EncryptionProfile
 import dev.animeshvarma.sigil.model.SigilMode
 import dev.animeshvarma.sigil.model.UiState
+import dev.animeshvarma.sigil.ui.components.KeepScreenShieldAwake
+import dev.animeshvarma.sigil.util.SecureAlertDialog
 import dev.animeshvarma.sigil.ui.components.SecurePasswordInput
 import dev.animeshvarma.sigil.ui.components.SigilButtonGroup
 import dev.animeshvarma.sigil.ui.components.StyledLayerContainer
@@ -354,6 +356,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
     if (showAddLayerSheet) {
         ModalBottomSheet(onDismissRequest = { showAddLayerSheet = false }) {
+            KeepScreenShieldAwake()
             AddLayerSheetContent(
                 onAdd = { algos ->
                     viewModel.addLayers(algos)
@@ -437,7 +440,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
 
     if (showRawSecurityWarning) {
         val algoName = uiState.customLayers.firstOrNull()?.algorithm?.name ?: "Unknown"
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showRawSecurityWarning = false },
             icon = { Icon(Icons.Default.Security, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Security Warning") },
@@ -501,7 +504,7 @@ fun CustomEncryptionScreen(viewModel: SigilViewModel, uiState: UiState) {
     // UPDATE CONFIRMATION DIALOG
     showOverwriteDialog?.let { existing ->
 
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showOverwriteDialog = null },
             icon = { Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Profile Exists") },
@@ -584,7 +587,7 @@ fun SaveProfileDialog(
     // Raw Mode State
     var useRawMode by remember { mutableStateOf(initialIsRaw) }
 
-    AlertDialog(
+    SecureAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (initialName.isEmpty()) "Save Profile" else "Edit Profile") },
         text = {

@@ -50,6 +50,8 @@ import android.os.Build
 import dev.animeshvarma.sigil.SigilViewModel
 import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.model.LockType
+import dev.animeshvarma.sigil.util.SecureAlertDialog
+import dev.animeshvarma.sigil.util.SecureDialog
 import dev.animeshvarma.sigil.ui.components.SigilSegmentedControl
 import dev.animeshvarma.sigil.util.BiometricHelper
 import kotlin.math.atan2
@@ -285,7 +287,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
             trailing = {
                 Switch(checked = screenShield, onCheckedChange = {
                     screenShield = it
-                    prefs.isScreenShieldEnabled = it
+                    viewModel.setScreenShieldEnabled(it)
                 })
             }
         )
@@ -537,7 +539,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
     // --- DIALOGS ---
 
     if (showSecurityErrorDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showSecurityErrorDialog = false },
             icon = { Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Device Security Not Set") },
@@ -555,7 +557,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
 
         when (setupStep) {
             0 -> { // STEP 0: TYPE SELECTION
-                androidx.compose.ui.window.Dialog(onDismissRequest = { cleanupSetup(false) }) {
+                SecureDialog(onDismissRequest = { cleanupSetup(false) }) {
                     Surface(
                         shape = MaterialTheme.shapes.extraLarge,
                         color = MaterialTheme.colorScheme.surfaceContainerHigh,
@@ -629,7 +631,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
             }
             1 -> { // STEP 1: CREATE INPUT
                 var firstInput by remember { mutableStateOf("") }
-                AlertDialog(
+                SecureAlertDialog(
                     onDismissRequest = { cleanupSetup(false) },
                     icon = { Icon(Icons.Default.Lock, null) },
                     title = {
@@ -683,7 +685,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
                 var confirmInput by remember { mutableStateOf("") }
                 var error by remember { mutableStateOf(false) }
 
-                AlertDialog(
+                SecureAlertDialog(
                     onDismissRequest = { cleanupSetup(false) },
                     icon = { Icon(Icons.Default.VerifiedUser, null) },
                     title = {
@@ -770,7 +772,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
         var isVerifying by remember { mutableStateOf(false) }
         val inputType = prefs.lockType
 
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showVerifyPinDialog = false },
             icon = { Icon(Icons.Default.VerifiedUser, null) },
             title = { Text("Verify Secret") },
@@ -845,7 +847,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
         var resetKdf by remember { mutableStateOf(true) }
         var resetProfiles by remember { mutableStateOf(true) }
 
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showResetSettingsDialog = false },
             icon = { Icon(Icons.Default.SettingsBackupRestore, null) },
             title = { Text("Reset App Preferences") },
@@ -938,6 +940,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
                             graceEnabled = freshPrefs.isGracePeriodEnabled
                             graceMinutes = freshPrefs.graceDurationMinutes.toFloat()
                             screenShield = freshPrefs.isScreenShieldEnabled
+                            viewModel.setScreenShieldEnabled(freshPrefs.isScreenShieldEnabled)
                             clipTimeout = freshPrefs.clipboardTimeoutSeconds.toFloat()
                         }
 
@@ -965,7 +968,7 @@ fun SettingsScreen(viewModel: SigilViewModel) {
 
     // CONFIRM WIPE ALL
     if (showWipeDataDialog) {
-        AlertDialog(
+        SecureAlertDialog(
             onDismissRequest = { showWipeDataDialog = false },
             icon = { Icon(Icons.Default.DeleteForever, null, tint = MaterialTheme.colorScheme.error) },
             title = { Text("Scorched Earth") },
@@ -1092,7 +1095,7 @@ fun AdvancedColorPickerDialog(
         android.graphics.Color.colorToHSV(color.toArgb(), hsv.value)
     }
 
-    AlertDialog(
+    SecureAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Select Accent Color") },
         text = {
