@@ -43,6 +43,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
@@ -275,7 +276,16 @@ class MainActivity : AppCompatActivity() {
                                         MaterialTheme.colorScheme.background.copy(
                                             alpha = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) 0.6f else 1.0f
                                         )
-                                    ),
+                                    )
+                                    .pointerInput(Unit) {
+                                        awaitPointerEventScope {
+                                            while (true) {
+                                                awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial)
+                                                    .changes
+                                                    .forEach { it.consume() }
+                                            }
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
@@ -303,9 +313,6 @@ class MainActivity : AppCompatActivity() {
         if (prefs.isScreenShieldEnabled) {
             showSecureOverlay()
         }
-        if (prefs.lockMode != LockMode.NONE) {
-            isContentHidden.value = true
-        }
         super.onPause()
     }
 
@@ -316,7 +323,6 @@ class MainActivity : AppCompatActivity() {
         if (hasFocus) {
             updateSecureFlag(prefs.isScreenShieldEnabled)
         }
-        // Compose state naturally reacts to isWindowFocused now, ensuring perfect sync.
     }
 
     override fun onDestroy() {
