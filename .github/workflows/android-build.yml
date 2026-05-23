@@ -3,6 +3,9 @@ name: Android Build & Sign
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   push:
     branches: [ "master", "dev" ]
@@ -64,6 +67,7 @@ jobs:
         alias: ${{ secrets.KEY_ALIAS }}
         keyStorePassword: ${{ secrets.KEYSTORE_PASSWORD }}
         keyPassword: ${{ secrets.KEY_PASSWORD }}
+        buildToolsVersion: '34.0.0'
 
     # Dynamically extract the versionName
     - name: Get Version Name
