@@ -47,6 +47,19 @@ def bootstrap():
     Verifies that all required cryptographic and UI dependencies are installed.
     Installs missing packages via pip.
     """
+    # 1. Check for system-level GUI dependencies
+    try:
+        import tkinter
+    except ImportError as e:
+        print(f"\n[System] GUI Initialization Failed: {e}")
+        print("[System] Python on Linux requires the OS-level Tkinter library to be installed.")
+        print("[System] Please install it via your system package manager:")
+        print("  - Arch Linux   : sudo pacman -S tk")
+        print("  - Debian/Ubuntu: sudo apt install python3-tk")
+        print("  - Fedora       : sudo dnf install python3-tkinter")
+        sys.exit(1)
+
+    # 2. Check for pip dependencies
     packages = {
         "cryptography": "cryptography",
         "argon2-cffi": "argon2",
@@ -62,7 +75,6 @@ def bootstrap():
         except ImportError:
             print(f"[{pkg}] missing. Installing via pip...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "--quiet"])
-
 
 bootstrap()
 
@@ -140,19 +152,8 @@ import struct
 import zlib
 import hmac as std_hmac
 
-try:
-    import customtkinter as ctk
-    from tkinter import messagebox
-except ImportError as e:
-    print(f"\n[System] GUI Initialization Failed: {e}")
-    print("[System] Python on Linux requires the OS-level Tkinter library to be installed.")
-    print("[System] Please install it via your system package manager:")
-    print("  - Arch Linux   : sudo pacman -S tk")
-    print("  - Debian/Ubuntu: sudo apt install python3-tk")
-    print("  - Fedora       : sudo dnf install python3-tkinter")
-    import sys
-    sys.exit(1)
-
+import customtkinter as ctk
+from tkinter import messagebox
 from PIL import Image, ImageTk
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
