@@ -140,8 +140,19 @@ import struct
 import zlib
 import hmac as std_hmac
 
-import customtkinter as ctk
-from tkinter import messagebox
+try:
+    import customtkinter as ctk
+    from tkinter import messagebox
+except ImportError as e:
+    print(f"\n[System] GUI Initialization Failed: {e}")
+    print("[System] Python on Linux requires the OS-level Tkinter library to be installed.")
+    print("[System] Please install it via your system package manager:")
+    print("  - Arch Linux   : sudo pacman -S tk")
+    print("  - Debian/Ubuntu: sudo apt install python3-tk")
+    print("  - Fedora       : sudo dnf install python3-tkinter")
+    import sys
+    sys.exit(1)
+
 from PIL import Image, ImageTk
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM, ChaCha20Poly1305
