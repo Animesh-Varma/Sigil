@@ -573,6 +573,7 @@ class SigilDesktop(ctk.CTk):
             self.info_popup.wm_iconphoto(True, self.icon_image)
 
         self.info_popup.transient(self)
+        self.info_popup.wait_visibility()
         self.info_popup.grab_set()
 
         ctk.CTkLabel(self.info_popup, text="Algorithm Notice", font=("Roboto", 18, "bold"),
