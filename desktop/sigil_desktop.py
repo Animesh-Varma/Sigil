@@ -74,7 +74,17 @@ def bootstrap():
             importlib.import_module(imp)
         except ImportError:
             print(f"[{pkg}] missing. Installing via pip...")
-            subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "--quiet"])
+            try:
+                subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "--quiet"])
+            except subprocess.CalledProcessError:
+                print(f"\n[System] FATAL: Failed to compile/install '{pkg}'.")
+                if os.name == 'nt' and pkg in ['twofish', 'pyserpent']:
+                    print("[System] Native cryptographic C-extensions require a C++ compiler on Windows.")
+                    print("[System] 1. Download Microsoft C++ Build Tools:")
+                    print("          https://visualstudio.microsoft.com/visual-cpp-build-tools/")
+                    print("[System] 2. Run the installer and check 'Desktop development with C++'")
+                    print("[System] 3. Restart your terminal and run this script again.")
+                sys.exit(1)
 
 bootstrap()
 
