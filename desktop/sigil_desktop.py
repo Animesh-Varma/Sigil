@@ -14,6 +14,8 @@ def ensure_venv_and_relaunch():
     """
     Ensures the script runs inside a dedicated virtual environment.
     If not, it automatically creates one, installs dependencies, and relaunches itself securely.
+
+    This technique prevents pollution of the global Python environment.
     """
     in_venv = sys.prefix != sys.base_prefix
     if not in_venv and not os.environ.get("VIRTUAL_ENV"):
@@ -43,7 +45,7 @@ ensure_venv_and_relaunch()
 def bootstrap():
     """
     Verifies that all required cryptographic and UI dependencies are installed.
-    Installs missing packages securely via pip.
+    Installs missing packages via pip.
     """
     packages = {
         "cryptography": "cryptography",
@@ -68,9 +70,9 @@ bootstrap()
 # ==========================================
 # 1.5 CROSS-PLATFORM ICON FETCHER
 # ==========================================
-def format_icon_for_os(icon_path):
+def format_icon_for_os(icon_path: str) -> str:
     """
-    Processes the raw, downloaded PNG icon into an OS-native format.
+    Processes the raw, downloaded PNG icon into an OS-native format (.ico for Windows, formatted .png for macOS).
     """
     try:
         from PIL import Image, ImageDraw
@@ -119,14 +121,12 @@ def fetch_icon_crossplatform():
         print("[System] Fetching app icon...")
         try:
             ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
             url = "https://github.com/Animesh-Varma/Sigil/blob/master/fastlane/metadata/android/en-US/images/icon.png?raw=true"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req, context=ctx) as response, open(icon_path, 'wb') as out_file:
                 out_file.write(response.read())
         except Exception as e:
-            print(f"[System] Failed to download icon: {e}")
+            print(f"[System] Failed to download icon (Fallback to default): {e}")
             return None
 
     return format_icon_for_os(icon_path)
@@ -151,24 +151,33 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from cryptography.hazmat.backends import default_backend
 from argon2.low_level import hash_secret_raw, Type
 
-MAX_DATA_LIMIT = 10 * 1024 * 1024
+MAX_DATA_LIMIT = 10 * 1024 * 1024  # 10 MB absolute limit, matching Android
 DEFAULT_CHAIN = ["XCHACHA20_POLY1305", "SERPENT_GCM", "TWOFISH_GCM", "AES_GCM"]
 
 # --- Material 3 (E) Theme Palette ---
-BG_COLOR = "#121212"  # Darkened Material 3 base
-CARD_BG = "#1E1E1E"  # Elevated card component
-BORDER_COLOR = "#333333"  # Subtle divider borders
-TEXT_PRIMARY = "#E3E3E3"  # Main titles and input text
-TEXT_MUTED = "#A0A0A0"  # Placeholders and secondary labels
-ACCENT_ACTIVE = "#2B2B2B"  # Segmented active state
-HOVER_COLOR = "#3A3A3A"  # General element hover
-BTN_WHITE = "#E3E3E3"  # Primary action fill
-BTN_WHITE_TXT = "#121212"  # Primary action text
+BG_COLOR = "#121212"
+CARD_BG = "#1E1E1E"
+BORDER_COLOR = "#333333"
+TEXT_PRIMARY = "#E3E3E3"
+TEXT_MUTED = "#A0A0A0"
+ACCENT_ACTIVE = "#2B2B2B"
+HOVER_COLOR = "#3A3A3A"
+BTN_WHITE = "#E3E3E3"
+BTN_WHITE_TXT = "#121212"
+
 
 # ==========================================
 # 3. PURE PYTHON GCM MODE
 # ==========================================
 def gf_mult(x: bytes, y: bytes) -> bytes:
+    """
+    Performs mathematical Galois Field (GF) 2^128 multiplication, required for GCM mode.
+
+    SECURITY NOTICE: This is a pure-python logical implementation. It executes with
+    variable-time memory accesses and branching, making it susceptible to timing
+    side-channel attacks. It is utilized exclusively for legacy or non-native
+    BouncyCastle block ciphers like Serpent and Twofish.
+    """
     z, v = bytearray(16), bytearray(x)
     for i in range(128):
         if y[i // 8] & (1 << (7 - (i % 8))):
@@ -186,6 +195,8 @@ def gf_mult(x: bytes, y: bytes) -> bytes:
 
 
 def ghash(h: bytes, aad: bytes, c: bytes) -> bytes:
+    """Calculates the GHASH over Additional Authenticated Data (AAD) and the Ciphertext."""
+
     def pad16(d):
         return d + b'\x00' * ((16 - len(d)) % 16) if len(d) % 16 else d
 
@@ -205,6 +216,11 @@ def ghash(h: bytes, aad: bytes, c: bytes) -> bytes:
 
 
 class PyGCM:
+    """
+    Wraps standard 128-bit Block Ciphers in Galois/Counter Mode (GCM),
+    strictly replicating BouncyCastle's GCMBlockCipher sequence logic.
+    """
+
     def __init__(self, encrypt_block_fn):
         self.enc_blk = encrypt_block_fn
         self.h = self.enc_blk(b'\x00' * 16)
@@ -227,8 +243,11 @@ class PyGCM:
         ct, tag = ct_tag[:-16], ct_tag[-16:]
         j0 = iv + b'\x00\x00\x00\x01' if len(iv) == 12 else ghash(self.h, b'', iv)
         expected_tag = bytes(a ^ b for a, b in zip(ghash(self.h, aad, ct), self.enc_blk(j0)))
+
+        # Constant-time comparison ensures MAC timing attacks aren't viable
         if not std_hmac.compare_digest(tag, expected_tag):
             raise ValueError("GCM authentication failed (Corrupted Layer).")
+
         ctr = self._inc32(j0)
         pt = bytearray()
         for i in range(0, len(ct), 16):
@@ -242,18 +261,33 @@ class PyGCM:
 # 4. SIGIL CRYPTO ENGINE
 # ==========================================
 class CryptoEngine:
+    """
+    Python equivalent of the Android BouncyCastle `CryptoEngine`.
+    Maintains 1:1 functional parity with the Android structure including Argon2,
+    HKDF subkey chaining, Global HMACs, Header encapsulation, and data layout.
+
+    SECURITY NOTICE: The Android Kotlin engine utilizes `key.fill(0)`
+    to wipe secrets directly from memory after use. Python's byte strings are
+    immutable, making it practically impossible to deterministically wipe key
+    material from RAM prior to standard Garbage Collection.
+    """
+
     @staticmethod
     def derive_key_argon2(password: bytes, salt: bytes, length: int, iters: int, mem_pow2: int, par: int) -> bytes:
+        """Derives primary cryptographic material via Argon2id (Version 1.3)."""
         mem_cost = 1 << mem_pow2
         return hash_secret_raw(secret=password, salt=salt, time_cost=iters, memory_cost=mem_cost, parallelism=par,
                                hash_len=length, type=Type.ID)
 
     @staticmethod
     def derive_subkey(root: bytes, salt: bytes, context: str, length: int) -> bytes:
+        """Derives per-layer keys using HKDF-SHA512."""
         return HKDF(hashes.SHA512(), length, salt, context.encode('utf-8'), default_backend()).derive(root)
 
     @staticmethod
     def hchacha20(key: bytes, nonce: bytes) -> bytes:
+        """HChaCha20 derivation function required for standardizing XChaCha20."""
+
         def rotl(x, d): return ((x << d) | (x >> (32 - d))) & 0xFFFFFFFF
 
         state = [0] * 16
@@ -283,6 +317,7 @@ class CryptoEngine:
 
     @staticmethod
     def process_cipher(encrypt: bool, algo: str, data: bytes, key: bytes, iv: bytes, aad: bytes = b'') -> bytes:
+        """Route generic parameters into designated cryptographic primitives."""
         if algo == "AES_GCM":
             aes = AESGCM(key)
             return aes.encrypt(iv, data, aad) if encrypt else aes.decrypt(iv, data, aad)
@@ -290,6 +325,7 @@ class CryptoEngine:
             chacha = ChaCha20Poly1305(key)
             return chacha.encrypt(iv, data, aad) if encrypt else chacha.decrypt(iv, data, aad)
         elif algo == "XCHACHA20_POLY1305":
+            # Manual construction of XChaCha using HChaCha and native ChaChaPoly
             chacha = ChaCha20Poly1305(CryptoEngine.hchacha20(key, iv[0:16]))
             adj_iv = bytes(4) + iv[16:24]
             return chacha.encrypt(adj_iv, data, aad) if encrypt else chacha.decrypt(adj_iv, data, aad)
@@ -305,56 +341,101 @@ class CryptoEngine:
             raise NotImplementedError(f"Cipher {algo} not supported natively.")
 
     @staticmethod
+    def _safe_decompress(data: bytes, max_size: int = MAX_DATA_LIMIT) -> bytes:
+        """
+        Prevents memory exhaustion attacks (Zip Bombs).
+        Chunked decompression actively validates bounds identical to Android's `safeDecompress`.
+        """
+        dco = zlib.decompressobj()
+        out = bytearray()
+        # Decompress securely in chunks
+        for i in range(0, len(data), 2048):
+            out.extend(dco.decompress(data[i:i + 2048]))
+            if len(out) > max_size:
+                raise ValueError("Decompression limit exceeded (Potential Zip Bomb).")
+        out.extend(dco.flush())
+        if len(out) > max_size:
+            raise ValueError("Decompression limit exceeded (Potential Zip Bomb).")
+        return bytes(out)
+
+    @staticmethod
     def encrypt_chain(data: str, password: str, cfg: dict) -> str:
+        """
+        Encrypts a string passing it through a layered array of ciphers (Sigil Chain),
+        protecting it with a primary Global HMAC, and packing metadata into an AES-GCM header.
+        """
+        # Compress payload matching Android logic
         pt = zlib.compress(data.encode('utf-8'), level=zlib.Z_BEST_COMPRESSION)
+
         salt = os.urandom(16)
         root = CryptoEngine.derive_key_argon2(password.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
+
         iv_list = []
         for i, algo in enumerate(DEFAULT_CHAIN):
             iv = os.urandom(24 if algo == "XCHACHA20_POLY1305" else 12)
             iv_list.append(iv)
             key = CryptoEngine.derive_subkey(root, salt, f"SIGIL_LAYER_{i + 1}", 32)
             pt = CryptoEngine.process_cipher(True, algo, pt, key, iv)
-            del key
+            del key  # Python GC relied on for memory cleanup
+
         iv_b64 = ','.join(base64.b64encode(i).decode() for i in iv_list)
         meta = f"{','.join(DEFAULT_CHAIN)}|{iv_b64}|C".encode('utf-8')
+
         h_iv = os.urandom(12)
         h_key = CryptoEngine.derive_subkey(root, salt, "SIGIL_HEADER", 32)
         enc_meta = CryptoEngine.process_cipher(True, "AES_GCM", meta, h_key, h_iv, aad=salt)
         del h_key
+
+        # Build binary package
         pack = bytearray(salt + h_iv + struct.pack(">I", len(enc_meta)) + enc_meta + pt)
+
         mac_key = CryptoEngine.derive_subkey(root, salt, "SIGIL_GLOBAL_MAC", 32)
         hmac_tag = crypto_hmac.HMAC(mac_key, hashes.SHA256(), default_backend())
         hmac_tag.update(bytes(pack))
+
         del root
         return base64.b64encode(bytes(pack) + hmac_tag.finalize()).decode('utf-8').rstrip('=')
 
     @staticmethod
     def decrypt_chain(b64_data: str, password: str, cfg: dict) -> str:
+        """
+        Verifies the Global HMAC and fully unpacks/decrypts the encapsulated layer sequence.
+        """
         clean = "".join(b64_data.split())
         clean += '=' * (4 - len(clean) % 4) if len(clean) % 4 else ''
         raw = base64.b64decode(clean)
+
         payload, stored_mac, salt = raw[:-32], raw[-32:], raw[:16]
         root = CryptoEngine.derive_key_argon2(password.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
+
         mac_key = CryptoEngine.derive_subkey(root, salt, "SIGIL_GLOBAL_MAC", 32)
         calc_mac = crypto_hmac.HMAC(mac_key, hashes.SHA256(), default_backend())
         calc_mac.update(payload)
+
         if not std_hmac.compare_digest(stored_mac, calc_mac.finalize()):
             raise ValueError("Global HMAC Integrity check failed. Incorrect password or corrupted data.")
+
         h_iv, h_len = payload[16:28], struct.unpack(">I", payload[28:32])[0]
         enc_meta, pt = payload[32:32 + h_len], payload[32 + h_len:]
+
         header_key = CryptoEngine.derive_subkey(root, salt, "SIGIL_HEADER", 32)
         meta = CryptoEngine.process_cipher(False, "AES_GCM", enc_meta, header_key, h_iv, aad=salt).decode('utf-8')
+
         algos, ivs = meta.split("|")[0].split(","), meta.split("|")[1].split(",")
         for i in reversed(range(len(algos))):
             layer_key = CryptoEngine.derive_subkey(root, salt, f"SIGIL_LAYER_{i + 1}", 32)
             pt = CryptoEngine.process_cipher(False, algos[i], pt, layer_key, base64.b64decode(ivs[i]))
             del layer_key
+
         del root
-        return zlib.decompress(pt).decode('utf-8') if meta.endswith("|C") else pt.decode('utf-8')
+        return CryptoEngine._safe_decompress(pt).decode('utf-8') if meta.endswith("|C") else pt.decode('utf-8')
 
     @staticmethod
     def encrypt_raw(data: str, pwd: str, algo: str, cfg: dict) -> str:
+        """
+        Encrypts a raw string bypassing the Sigil Chain rules and metadata header.
+        WARNING: Generates non-MACAware containers for non-AEAD ciphers.
+        """
         salt = os.urandom(16)
         iv = os.urandom(24 if algo == "XCHACHA20_POLY1305" else 12)
         key = CryptoEngine.derive_key_argon2(pwd.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
@@ -364,12 +445,17 @@ class CryptoEngine:
 
     @staticmethod
     def decrypt_raw(data: str, pwd: str, algo: str, cfg: dict) -> str:
+        """
+        Attempts direct Raw Decryption utilizing standard padding-restored Base64 bytes.
+        """
         clean = "".join(data.split())
         clean += '=' * (4 - len(clean) % 4) if len(clean) % 4 else ''
         raw = base64.b64decode(clean)
         salt = raw[:16]
+
         iv_len = 24 if algo == "XCHACHA20_POLY1305" else 12
         iv, ct = raw[16:16 + iv_len], raw[16 + iv_len:]
+
         key = CryptoEngine.derive_key_argon2(pwd.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
         res = CryptoEngine.process_cipher(False, algo, ct, key, iv).decode('utf-8')
         del key
@@ -380,6 +466,12 @@ class CryptoEngine:
 # 5. DESKTOP-NATIVE UI (Material 3 Dark)
 # ==========================================
 class SigilDesktop(ctk.CTk):
+    """
+    Constructs the Graphical User Interface leveraging CustomTkinter.
+    Houses logic for rendering split panels, Material 3 Dark UI guidelines,
+    and widget component state management.
+    """
+
     def __init__(self, icon_path):
         super().__init__()
         self.title("Sigil Desktop Companion")
@@ -398,6 +490,7 @@ class SigilDesktop(ctk.CTk):
             except Exception as e:
                 print(f"[UI] Could not apply icon: {e}")
 
+        # Matches Android's default security parameters
         self.cfg = {'iters': 10, 'mem': 16, 'par': 4}
 
         self.setup_header()
@@ -420,12 +513,10 @@ class SigilDesktop(ctk.CTk):
 
         ctk.CTkLabel(header, text="Sigil", font=("Roboto", 22, "bold"), text_color=TEXT_PRIMARY).pack()
 
-        # Mobile-style segmented divider
         self.seg_frame = ctk.CTkFrame(header, fg_color=CARD_BG, border_width=1, border_color=BORDER_COLOR,
                                       corner_radius=1000)
         self.seg_frame.pack(pady=(15, 0))
 
-        # FIX: Added bg_color="transparent" to prevent border overlap artifacts, and increased the outer horizontal padding
         self.btn_chain = ctk.CTkButton(
             self.seg_frame, text="Sigil Chain", font=("Roboto", 13, "bold"), height=32, width=130, corner_radius=1000,
             fg_color="transparent", bg_color="transparent", text_color=TEXT_MUTED, hover_color=HOVER_COLOR,
@@ -452,10 +543,10 @@ class SigilDesktop(ctk.CTk):
             fg_color="transparent", hover_color=HOVER_COLOR, text_color=TEXT_MUTED,
             font=("Roboto", 18), command=self.show_info_popup
         )
-        # Flush elegant placement in the top right
         self.btn_info.place(relx=1.0, rely=0.0, anchor="ne", x=-30, y=30)
 
     def show_info_popup(self):
+        """Displays modal explaining internal algorithm differences and support."""
         if hasattr(self, "info_popup") and self.info_popup is not None and self.info_popup.winfo_exists():
             self.info_popup.focus()
             return
@@ -533,7 +624,6 @@ class SigilDesktop(ctk.CTk):
     # ----------------------------------------------------
     def store_original_colors(self, container):
         for w in container.winfo_children():
-            # FIX: Explicitly blacklist CTkComboBox from the color fader
             if isinstance(w, ctk.CTkComboBox):
                 continue
 
@@ -552,7 +642,6 @@ class SigilDesktop(ctk.CTk):
 
     def get_fade_widgets(self, container):
         ws = []
-        # FIX: Ensure Combobox is skipped during the actual animation loop
         if isinstance(container, ctk.CTkComboBox):
             return ws
 
@@ -622,6 +711,7 @@ class SigilDesktop(ctk.CTk):
         step(1)
 
     def show_view(self, name):
+        """Handles crossfade transitions between views internally driven by CustomTkinter."""
         if getattr(self, "current_view_name", None) == name or getattr(self, "is_animating", False):
             return
 
@@ -661,15 +751,12 @@ class SigilDesktop(ctk.CTk):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
         self.views[mode] = frame
 
-        # Top spacing and algorithm selection exclusively for Raw Mode
         if mode == "Raw Mode":
             algo_bar = ctk.CTkFrame(frame, fg_color="transparent")
             algo_bar.pack(fill="x", pady=(0, 15))
             ctk.CTkLabel(algo_bar, text="Algorithm Selection:", font=("Roboto", 14, "bold"),
                          text_color=TEXT_PRIMARY).pack(side="left", padx=(0, 10))
 
-            # FIX: Completely changed the widget to CTkComboBox. It uses a text entry for rendering
-            # instead of a button label, totally avoiding the CustomTkinter disappearance bug.
             self.algo_box = ctk.CTkComboBox(
                 algo_bar, values=["XCHACHA20_POLY1305", "SERPENT_GCM", "TWOFISH_GCM", "AES_GCM"],
                 width=230, height=32, corner_radius=8, state="readonly",
@@ -680,7 +767,6 @@ class SigilDesktop(ctk.CTk):
             self.algo_box.pack(side="left")
             self.algo_box.set("XCHACHA20_POLY1305")
 
-        # Top Split Section (Input & Output Boxes)
         split_area = ctk.CTkFrame(frame, fg_color="transparent")
         split_area.pack(fill="both", expand=True)
         split_area.grid_columnconfigure(0, weight=1)
@@ -807,10 +893,11 @@ class SigilDesktop(ctk.CTk):
         )
         b_dec.grid(row=0, column=2, padx=(0, 0))
 
-        # Pull directly using self.algo_box.get() if in Raw Mode
         if mode == "Raw Mode":
-            b_enc.configure(command=lambda: self._execute(mode, True, txt_in, txt_pwd, txt_out, b_enc, self.algo_box.get()))
-            b_dec.configure(command=lambda: self._execute(mode, False, txt_in, txt_pwd, txt_out, b_dec, self.algo_box.get()))
+            b_enc.configure(
+                command=lambda: self._execute(mode, True, txt_in, txt_pwd, txt_out, b_enc, self.algo_box.get()))
+            b_dec.configure(
+                command=lambda: self._execute(mode, False, txt_in, txt_pwd, txt_out, b_dec, self.algo_box.get()))
         else:
             b_enc.configure(command=lambda: self._execute(mode, True, txt_in, txt_pwd, txt_out, b_enc, None))
             b_dec.configure(command=lambda: self._execute(mode, False, txt_in, txt_pwd, txt_out, b_dec, None))
@@ -840,10 +927,8 @@ class SigilDesktop(ctk.CTk):
         self.views["Settings"] = frame
 
         card = ctk.CTkFrame(frame, fg_color=CARD_BG, border_width=1, border_color=BORDER_COLOR, corner_radius=16)
-        # FIX: Removed static relheight to allow dynamic auto-resizing so the bottom content isn't clipped
         card.place(relx=0.5, rely=0.5, anchor="center", relwidth=0.7)
 
-        # Padding container inside the card
         pad_frame = ctk.CTkFrame(card, fg_color="transparent")
         pad_frame.pack(fill="both", expand=True, padx=40, pady=40)
 
@@ -854,7 +939,7 @@ class SigilDesktop(ctk.CTk):
         ctk.CTkLabel(
             pad_frame, text="These hashing variables must perfectly mirror between encryption and decryption states.",
             text_color=TEXT_MUTED, font=("Roboto", 13)
-        ).pack(anchor="w", pady=(0, 20)) # Reduced padding to compact the view slightly
+        ).pack(anchor="w", pady=(0, 20))
 
         def update_labels(*args):
             lbl_it.configure(text=f"Iterations: {int(sl_it.get())} (Default: 10)")
