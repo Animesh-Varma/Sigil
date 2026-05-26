@@ -1,6 +1,38 @@
 import sys
+import os
 import subprocess
 import importlib
+
+
+# ==========================================
+# 0. AUTO-VENV SETUP & RELAUNCH
+# ==========================================
+def ensure_venv_and_relaunch():
+    """Ensures the script runs inside a dedicated virtual environment."""
+    in_venv = sys.prefix != sys.base_prefix
+    if not in_venv and not os.environ.get("VIRTUAL_ENV"):
+        venv_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".venv")
+
+        if not os.path.exists(venv_dir):
+            print("[System] Creating local virtual environment (.venv)...")
+            import venv
+            venv.create(venv_dir, with_pip=True)
+
+        # Determine the correct Python executable path based on OS
+        if os.name == 'nt':
+            venv_python = os.path.join(venv_dir, "Scripts", "python.exe")
+        else:
+            venv_python = os.path.join(venv_dir, "bin", "python")
+
+        print(f"[System] Relaunching securely within venv: {venv_python}")
+        sys.stdout.flush()
+
+        # Replace the current process entirely with the venv python process
+        os.execv(venv_python, [venv_python] + sys.argv)
+
+
+# Trigger auto-venv sequence before ANY heavy imports occur
+ensure_venv_and_relaunch()
 
 
 # ==========================================
@@ -29,7 +61,6 @@ bootstrap()
 # 2. IMPORTS & CONSTANTS
 # ==========================================
 import base64
-import os
 import struct
 import zlib
 import hmac as std_hmac
@@ -52,6 +83,8 @@ DEFAULT_CHAIN = ["XCHACHA20_POLY1305", "SERPENT_GCM", "TWOFISH_GCM", "AES_GCM"]
 # 3. PURE PYTHON GCM MODE
 # ==========================================
 def gf_mult(x: bytes, y: bytes) -> bytes:
+    """SECURITY NOTE: Pure Python gf_mult logic may be susceptible to side-channel timing analysis.
+    It is used strictly as a fallback for missing native library algorithms like Twofish and Serpent."""
     z, v = bytearray(16), bytearray(x)
     for i in range(128):
         if y[i // 8] & (1 << (7 - (i % 8))):
@@ -101,8 +134,12 @@ class PyGCM:
     def decrypt(self, iv: bytes, ct_tag: bytes, aad: bytes) -> bytes:
         ct, tag = ct_tag[:-16], ct_tag[-16:]
         j0 = iv + b'\x00\x00\x00\x01' if len(iv) == 12 else ghash(self.h, b'', iv)
-        if tag != bytes(a ^ b for a, b in zip(ghash(self.h, aad, ct), self.enc_blk(j0))):
+
+        expected_tag = bytes(a ^ b for a, b in zip(ghash(self.h, aad, ct), self.enc_blk(j0)))
+
+        if not std_hmac.compare_digest(tag, expected_tag):
             raise ValueError("GCM authentication failed (Corrupted Layer).")
+
         ctr = self._inc32(j0)
         pt = bytearray()
         for i in range(0, len(ct), 16):
@@ -180,6 +217,8 @@ class CryptoEngine:
 
     @staticmethod
     def encrypt_chain(data: str, password: str, cfg: dict) -> str:
+        # [SECURITY NOTE]: Pre-encryption compression can induce length-extension CRIME/BREACH side-channel
+        # attacks if the plaintext mixes secrets and attacker-controlled strings. Enabled for Android parity.
         pt = zlib.compress(data.encode('utf-8'), level=zlib.Z_BEST_COMPRESSION)
         salt = os.urandom(16)
         root = CryptoEngine.derive_key_argon2(password.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
@@ -190,15 +229,19 @@ class CryptoEngine:
             iv_list.append(iv)
             key = CryptoEngine.derive_subkey(root, salt, f"SIGIL_LAYER_{i + 1}", 32)
             pt = CryptoEngine.process_cipher(True, algo, pt, key, iv)
+            del key  # Hygiene
 
         meta = f"{','.join(DEFAULT_CHAIN)}|{','.join(base64.b64encode(i).decode() for i in iv_list)}|C".encode('utf-8')
         h_iv, h_key = os.urandom(12), CryptoEngine.derive_subkey(root, salt, "SIGIL_HEADER", 32)
         enc_meta = CryptoEngine.process_cipher(True, "AES_GCM", meta, h_key, h_iv, aad=salt)
+        del h_key
 
         pack = bytearray(salt + h_iv + struct.pack(">I", len(enc_meta)) + enc_meta + pt)
         hmac_tag = crypto_hmac.HMAC(CryptoEngine.derive_subkey(root, salt, "SIGIL_GLOBAL_MAC", 32), hashes.SHA256(),
                                     default_backend())
         hmac_tag.update(bytes(pack))
+
+        del root  # Clean memory reference
         return base64.b64encode(bytes(pack) + hmac_tag.finalize()).decode('utf-8').rstrip('=')
 
     @staticmethod
@@ -210,10 +253,12 @@ class CryptoEngine:
         payload, stored_mac, salt = raw[:-32], raw[-32:], raw[:16]
 
         root = CryptoEngine.derive_key_argon2(password.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
+
         calc_mac = crypto_hmac.HMAC(CryptoEngine.derive_subkey(root, salt, "SIGIL_GLOBAL_MAC", 32), hashes.SHA256(),
                                     default_backend())
         calc_mac.update(payload)
 
+        # Secure constant-time comparison natively supplied by Python
         if not std_hmac.compare_digest(stored_mac, calc_mac.finalize()):
             raise ValueError("Global HMAC Integrity check failed. Incorrect password or corrupted data.")
 
@@ -228,7 +273,9 @@ class CryptoEngine:
         for i in reversed(range(len(algos))):
             layer_key = CryptoEngine.derive_subkey(root, salt, f"SIGIL_LAYER_{i + 1}", 32)
             pt = CryptoEngine.process_cipher(False, algos[i], pt, layer_key, base64.b64decode(ivs[i]))
+            del layer_key
 
+        del root
         return zlib.decompress(pt).decode('utf-8') if meta.endswith("|C") else pt.decode('utf-8')
 
     @staticmethod
@@ -236,6 +283,7 @@ class CryptoEngine:
         salt, iv = os.urandom(16), os.urandom(24 if algo == "XCHACHA20_POLY1305" else 12)
         key = CryptoEngine.derive_key_argon2(pwd.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
         ct = CryptoEngine.process_cipher(True, algo, data.encode('utf-8'), key, iv)
+        del key
         return base64.b64encode(salt + iv + ct).decode('utf-8')
 
     @staticmethod
@@ -247,7 +295,9 @@ class CryptoEngine:
         iv_len = 24 if algo == "XCHACHA20_POLY1305" else 12
         iv, ct = raw[16:16 + iv_len], raw[16 + iv_len:]
         key = CryptoEngine.derive_key_argon2(pwd.encode('utf-8'), salt, 32, cfg['iters'], cfg['mem'], cfg['par'])
-        return CryptoEngine.process_cipher(False, algo, ct, key, iv).decode('utf-8')
+        res = CryptoEngine.process_cipher(False, algo, ct, key, iv).decode('utf-8')
+        del key
+        return res
 
 
 # ==========================================
@@ -261,14 +311,15 @@ class SigilDesktop(ctk.CTk):
         self.configure(fg_color="#0D0D0D")  # Pure Dark
         ctk.set_appearance_mode("dark")
 
-        # Grid layout (1 row, 2 columns)
+        # Grid layout: Sidebar (0), Main container (1)
         self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=0)
         self.grid_columnconfigure(1, weight=1)
 
         # Security Settings (Matches Android defaults)
         self.cfg = {'iters': 10, 'mem': 16, 'par': 4}
 
-        # Setup Frames
+        # Setup Components
         self.setup_sidebar()
 
         # Container for main views
@@ -276,6 +327,21 @@ class SigilDesktop(ctk.CTk):
         self.main_container.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
         self.main_container.grid_rowconfigure(0, weight=1)
         self.main_container.grid_columnconfigure(0, weight=1)
+
+        # Floating Info Button
+        self.btn_info = ctk.CTkButton(
+            self.main_container,
+            text="ℹ",
+            width=32,
+            height=32,
+            corner_radius=16,
+            fg_color="#1F1F1F",
+            hover_color="#333333",
+            text_color="#FFFFFF",
+            font=("Roboto", 16, "bold"),
+            command=self.show_info_popup
+        )
+        self.btn_info.place(relx=0.98, rely=0.01, anchor="ne")
 
         self.views = {}
         self.setup_encryption_view("Sigil Chain")
@@ -307,13 +373,69 @@ class SigilDesktop(ctk.CTk):
                                      command=lambda: self.show_view("Settings"))
         self.btn_set.pack(fill="x", padx=10, pady=5)
 
+    def show_info_popup(self):
+        """Displays the Algorithm Notice in a focused Toplevel popup."""
+        # Prevent multiple overlapping popups
+        if hasattr(self, "info_popup") and self.info_popup is not None and self.info_popup.winfo_exists():
+            self.info_popup.focus()
+            return
+
+        self.info_popup = ctk.CTkToplevel(self)
+        self.info_popup.title("Algorithm Notice")
+        self.info_popup.geometry("450x550")
+        self.info_popup.configure(fg_color="#121212")
+        self.info_popup.resizable(False, False)
+
+        # Make the popup transient (stays on top of main window)
+        self.info_popup.transient(self)
+        self.info_popup.grab_set()
+
+        ctk.CTkLabel(self.info_popup, text="Algorithm Notice", font=("Roboto", 18, "bold"), text_color="#FFFFFF").pack(
+            anchor="w", padx=20, pady=(20, 5))
+
+        # Dividing Line
+        div = ctk.CTkFrame(self.info_popup, height=2, fg_color="#333333")
+        div.pack(fill="x", padx=20, pady=(0, 15))
+
+        info_text = (
+            "The original Android Sigil application ships with a massive suite of cryptographic algorithms backed "
+            "by the Java BouncyCastle library.\n\n"
+            "Mobile App Supported Engine:\n"
+            "• ARIA, CAMELLIA, SM4 (GCM & CBC)\n"
+            "• BLOWFISH, GOST, CAST5/6, TEA\n"
+            "• RC6, IDEA, SEED, etc...\n\n"
+            "Python Desktop Compatibility:\n"
+            "Due to dependencies, this Python companion focuses solely on algorithms needed to "
+            "successfully interoperate with the original \"Default Sigil Chain\".\n\n"
+            "Locally Implemented Ciphers:\n"
+            "✓ AES_GCM\n"
+            "✓ CHACHA20_POLY1305\n"
+            "✓ XCHACHA20_POLY1305\n"
+            "✓ TWOFISH_GCM\n"
+            "✓ SERPENT_GCM\n\n"
+            "Note on Raw Mode:\n"
+            "If you exported data natively from Android using an unlisted cipher (like BLOWFISH_CBC), "
+            "this desktop tool will not be able to decrypt it. Cross-platform encryption works seamlessly "
+            "when using the predefined default Chain."
+        )
+
+        txt_info = ctk.CTkTextbox(self.info_popup, font=("Roboto", 13), fg_color="transparent", text_color="#AAAAAA",
+                                  wrap="word")
+        txt_info.pack(fill="both", expand=True, padx=15, pady=(0, 20))
+        txt_info.insert("1.0", info_text)
+        txt_info.configure(state="disabled")
+
     def show_view(self, name):
+        # Update button highlights
         for btn, btn_name in [(self.btn_chain, "Sigil Chain"), (self.btn_raw, "Raw Mode"), (self.btn_set, "Settings")]:
             btn.configure(fg_color="#333333" if btn_name == name else "transparent",
                           text_color="#FFFFFF" if btn_name == name else "#DDDDDD")
 
+        # Raise view
         frame = self.views[name]
         frame.tkraise()
+        # Ensure the info button stays on top of the views
+        self.btn_info.lift()
 
     def setup_encryption_view(self, mode):
         frame = ctk.CTkFrame(self.main_container, fg_color="transparent")
