@@ -40,11 +40,18 @@ object SteganographyEngine {
 }
 
 object ZeroWidthStrategy : TextStegoStrategy {
-    private const val BIT_0 = '\u200C'
-    private const val BIT_1 = '\u200D'
+    private const val BIT_0 = '\u2060' // Word Joiner (WJ)
+    private const val BIT_1 = '\u2063' // Invisible Separator
 
     private const val MAGIC_HEADER = "SGL_START"
     private const val MAGIC_FOOTER = "SGL_END"
+
+    private val PROTECTED_PATTERN = Regex(
+        // Matches URLs, naked domains, and emails
+        "(?:(?:https?://)?(?:www\\.)?[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}\\b(?:/[^\\s]*)?)" +
+                "|!?\\[.*?\\]\\(.*?\\)" +                                       // Markdown Links/Images
+                "|[*_`~]{1,3}.*?[*_`~]{1,3}"                                    // Markdown Formatting
+    )
 
     override fun encode(coverText: String, secretData: String): String {
         val cleanCover = coverText.replace(BIT_0.toString(), "").replace(BIT_1.toString(), "").trim()
@@ -52,25 +59,60 @@ object ZeroWidthStrategy : TextStegoStrategy {
         val wrappedSecret = MAGIC_HEADER + secretData + MAGIC_FOOTER
         val binary = SteganographyEngine.stringToBinary(wrappedSecret)
 
-        val sequence = StringBuilder()
+        val sequence = java.lang.StringBuilder(binary.length)
         for (bit in binary) {
             sequence.append(if (bit == '0') BIT_0 else BIT_1)
         }
 
         if (cleanCover.isEmpty()) return sequence.toString()
 
-        val result = StringBuilder()
-        val seqLen = sequence.length
-        val coverLen = cleanCover.length
-
-        var seqIdx = 0
-        for (i in 0 until coverLen) {
-            result.append(cleanCover[i])
-            val charsToAppend = (seqLen - seqIdx) / (coverLen - i)
-            for (j in 0 until charsToAppend) {
-                result.append(sequence[seqIdx++])
+        // 1. Identify Safe Zones
+        val canInjectAfter = BooleanArray(cleanCover.length) { false }
+        for (i in cleanCover.indices) {
+            val c = cleanCover[i]
+            if (c.isWhitespace() || c in listOf('.', ',', '!', '?', '-', '\n', '\r')) {
+                canInjectAfter[i] = true
             }
         }
+
+        // 2. Map out Regex Protected Zones (URLs and Markdown)
+        val matches = PROTECTED_PATTERN.findAll(cleanCover)
+        for (match in matches) {
+            for (i in match.range.first until match.range.last) {
+                canInjectAfter[i] = false
+            }
+        }
+
+        // 3. Safe Bit Spreading
+        val result = java.lang.StringBuilder()
+        val seqLen = sequence.length
+        val safeSpotsTotal = canInjectAfter.count { it }
+
+        var seqIdx = 0
+        var safeSpotsPassed = 0
+
+        for (i in cleanCover.indices) {
+            result.append(cleanCover[i])
+
+            if (canInjectAfter[i]) {
+                safeSpotsPassed++
+                val remainingSpots = safeSpotsTotal - safeSpotsPassed + 1
+
+                val charsToAppend = if (remainingSpots > 0) {
+                    (seqLen - seqIdx) / remainingSpots
+                } else {
+                    0
+                }
+
+                for (j in 0 until charsToAppend) {
+                    if (seqIdx < seqLen) {
+                        result.append(sequence[seqIdx++])
+                    }
+                }
+            }
+        }
+
+        // 4. Append any remainder bits perfectly at the end of the text.
         while (seqIdx < seqLen) {
             result.append(sequence[seqIdx++])
         }
@@ -85,7 +127,7 @@ object ZeroWidthStrategy : TextStegoStrategy {
             throw IllegalArgumentException("Extraction Failed: No hidden data found in the provided text.")
         }
 
-        val extractedBinary = StringBuilder(allInvisibles.length)
+        val extractedBinary = java.lang.StringBuilder(allInvisibles.length)
         for (char in allInvisibles) {
             extractedBinary.append(if (char == BIT_0) "0" else "1")
         }
