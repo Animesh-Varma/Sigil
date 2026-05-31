@@ -22,8 +22,20 @@ object SteganographyEngine {
     private fun getStrategy(method: TextStegoMethod): TextStegoStrategy {
         return when (method) {
             TextStegoMethod.ZERO_WIDTH -> ZeroWidthStrategy
-            TextStegoMethod.WHITESPACE_PLACEHOLDER -> throw UnsupportedOperationException("Whitespace Strategy is currently under construction.")
-            TextStegoMethod.SYNONYM_LLM_PLACEHOLDER -> throw UnsupportedOperationException("LLM Strategy is currently under construction.")
+            TextStegoMethod.WHITESPACE_PLACEHOLDER -> throw UnsupportedOperationException(
+                """
+                Method Unavailable
+                --------------------------
+                Whitespace Strategy is currently under construction.
+                """.trimIndent()
+            )
+            TextStegoMethod.SYNONYM_LLM_PLACEHOLDER -> throw UnsupportedOperationException(
+                """
+                Method Unavailable
+                --------------------------
+                LLM Strategy is currently under construction.
+                """.trimIndent()
+            )
         }
     }
 
@@ -124,7 +136,15 @@ object ZeroWidthStrategy : TextStegoStrategy {
         val allInvisibles = stegoText.filter { it == BIT_0 || it == BIT_1 }
 
         if (allInvisibles.isEmpty()) {
-            throw IllegalArgumentException("Extraction Failed: No hidden data found in the provided text.")
+            throw IllegalArgumentException(
+                """
+                Extraction Failed
+                --------------------------
+                No hidden data found in the provided text. Please verify the following:
+                 • Payload: The text actually contains a steganographic payload.
+                 • Platform: The app or platform did not strip out invisible characters.
+                """.trimIndent()
+            )
         }
 
         val extractedBinary = java.lang.StringBuilder(allInvisibles.length)
@@ -138,20 +158,44 @@ object ZeroWidthStrategy : TextStegoStrategy {
 
         val startIndex = binaryStr.indexOf(headerBinary)
         if (startIndex == -1) {
-            throw IllegalArgumentException("Extraction Failed: Invalid data signature. The text does not contain a valid Sigil payload.")
+            throw IllegalArgumentException(
+                """
+                Extraction Failed
+                --------------------------
+                Invalid data signature. The text does not contain a valid Sigil payload. Please verify the following:
+                 • Method Context: Ensure you are using the correct Steganography method.
+                 • Integrity: The hidden data wasn't partially deleted or modified.
+                """.trimIndent()
+            )
         }
 
         val payloadStartIndex = startIndex + headerBinary.length
 
         val endIndex = binaryStr.lastIndexOf(footerBinary)
         if (endIndex == -1 || endIndex < payloadStartIndex) {
-            throw IllegalArgumentException("Extraction Failed: Payload is truncated or corrupted (Missing EOF marker).")
+            throw IllegalArgumentException(
+                """
+                Extraction Failed
+                --------------------------
+                Payload is truncated or corrupted (Missing EOF marker). Please verify the following:
+                 • Completeness: The entire text was copied completely.
+                 • Limits: Text length limits on the platform did not cut off the hidden data.
+                """.trimIndent()
+            )
         }
 
         val payloadBinary = binaryStr.substring(payloadStartIndex, endIndex)
 
         if (payloadBinary.length % 8 != 0) {
-            throw IllegalArgumentException("Extraction Failed: Bitstream misalignment. Data was stripped by the platform.")
+            throw IllegalArgumentException(
+                """
+                Extraction Failed
+                --------------------------
+                Bitstream misalignment. Data was stripped by the platform. Please verify the following:
+                 • Formatting: The platform did not alter or strip invisible formatting characters.
+                 • Sanitization: The text was not passed through a strict text sanitizer.
+                """.trimIndent()
+            )
         }
 
         return SteganographyEngine.binaryToString(payloadBinary)

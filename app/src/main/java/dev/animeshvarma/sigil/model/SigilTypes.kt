@@ -15,8 +15,8 @@ enum class LockMode {
 
 enum class TextStegoMethod(val title: String) {
     ZERO_WIDTH("Zero-Width"),
-    WHITESPACE_PLACEHOLDER("Whitespace (Soon)"),
-    SYNONYM_LLM_PLACEHOLDER("LLM (Soon)")
+    WHITESPACE_PLACEHOLDER("Whitespace"),
+    SYNONYM_LLM_PLACEHOLDER("LLM")
 }
 
 enum class AppScreen(val title: String) {

@@ -13,14 +13,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.*
@@ -49,7 +46,7 @@ import dev.animeshvarma.sigil.ui.theme.AnimationConfig
 @Composable
 fun SteganographyScreen(viewModel: SigilViewModel, uiState: UiState) {
     var selectedMediaTabIndex by remember { mutableIntStateOf(0) }
-    val mediaTabs = listOf("Text", "Photo", "Video")
+    val mediaTabs = listOf("Text", "Image", "Video")
 
     Column(
         modifier = Modifier
@@ -151,8 +148,7 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
             OutlinedTextField(
                 value = uiState.stegoCoverText,
                 onValueChange = { viewModel.onStegoCoverTextChanged(it) },
-                label = { Text("Public Text (Carrier)") },
-                placeholder = { Text("Text to hide inside or extract from") },
+                label = { Text("Carrier Text") },
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 shape = RoundedCornerShape(24.dp),
                 colors = OutlinedTextFieldDefaults.colors(
@@ -165,22 +161,13 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
 
             Spacer(modifier = Modifier.height(7.dp))
 
-            // Secret Text (With distinct visual helper)
+            // Secret Text
             OutlinedTextField(
                 value = uiState.stegoSecretText,
                 onValueChange = { viewModel.onStegoSecretTextChanged(it) },
-                label = { Text("Secret Data (Payload)") },
-                placeholder = { Text("Leave empty if you are only Extracting") },
+                label = { Text("Payload") },
                 modifier = Modifier.fillMaxWidth().weight(1f),
                 shape = RoundedCornerShape(24.dp),
-                trailingIcon = {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = "Optional for Extraction",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        modifier = Modifier.padding(end = 8.dp)
-                    )
-                },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.Transparent,
                     unfocusedContainerColor = Color.Transparent,
@@ -206,12 +193,12 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
-                                    text = "Encryption Layer",
+                                    text = "Cryptographic Layer",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "Secure the payload before hiding it",
+                                    text = "Encrypt the payload prior to concealment",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -248,7 +235,7 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
                                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
                             ) {
-                                Text("Active Chain: ${uiState.activeProfile.name}", color = MaterialTheme.colorScheme.onSurface)
+                                Text("Active Configuration: ${uiState.activeProfile.name}", color = MaterialTheme.colorScheme.onSurface)
                             }
                         }
                     }
@@ -289,8 +276,8 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
                                     putExtra(Intent.EXTRA_TEXT, uiState.stegoOutput)
                                     type = "text/plain"
                                 }
-                                context.startActivity(Intent.createChooser(sendIntent, "Share Data"))
-                                viewModel.addLog("Share Sheet opened.")
+                                context.startActivity(Intent.createChooser(sendIntent, "Share Output"))
+                                viewModel.addLog("Sharing options opened.")
                             }
                         }) {
                             Icon(Icons.Default.Share, "Share", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -298,7 +285,7 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
 
                         IconButton(onClick = {
                             if (uiState.stegoOutput.isNotEmpty()) {
-                                viewModel.copyToClipboardSecurely(uiState.stegoOutput, "Sigil Data")
+                                viewModel.copyToClipboardSecurely(uiState.stegoOutput, "Extracted Payload")
                             }
                         }) {
                             Icon(Icons.Default.ContentCopy, "Copy", tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -352,16 +339,16 @@ fun TextSteganographyInterface(viewModel: SigilViewModel, uiState: UiState) {
                             isActive = profile.id == uiState.activeProfile.id,
                             onSelect = {
                                 viewModel.selectProfile(it)
-                                showToast("Activated: ${it.name}")
+                                showToast("Profile activated: ${it.name}")
                             },
                             onEdit = {
                                 viewModel.loadProfileToCustomMode(it)
                                 showProfileSheet = false
-                                showToast("Editing ${it.name}")
+                                showToast("Modifying profile: ${it.name}")
                             },
                             onDelete = {
                                 viewModel.deleteProfile(it.id)
-                                showToast("Profile deleted")
+                                showToast("Profile successfully removed.")
                             }
                         )
                     }
@@ -395,7 +382,7 @@ private fun StegoActionGroup(
             baseWeight = 0.65f
         )
         StegoPill(
-            text = "Hide Data",
+            text = "Conceal",
             onClick = onHide,
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -403,7 +390,7 @@ private fun StegoActionGroup(
             baseWeight = 1f
         )
         StegoPill(
-            text = "Extract Data",
+            text = "Extract",
             onClick = onExtract,
             containerColor = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
