@@ -13,6 +13,12 @@ enum class LockMode {
     CUSTOM
 }
 
+enum class TextStegoMethod(val title: String) {
+    ZERO_WIDTH("Zero-Width"),
+    WHITESPACE_PLACEHOLDER("Whitespace (Soon)"),
+    SYNONYM_LLM_PLACEHOLDER("LLM (Soon)")
+}
+
 enum class AppScreen(val title: String) {
     HOME("Home"),
     HEADERLESS("Headerless Mode"),
@@ -134,12 +140,23 @@ data class LayerEntry(
 )
 
 data class UiState(
+    // Encryption Tab State
     val autoInput: String = "",
     val autoPassword: String = "",
     val autoOutput: String = "",
     val customInput: String = "",
     val customPassword: String = "",
     val customOutput: String = "",
+
+    // Steganography Tab State
+    val stegoCoverText: String = "",
+    val stegoSecretText: String = "",
+    val stegoPassword: String = "",
+    val stegoOutput: String = "",
+    val selectedStegoMethod: TextStegoMethod = TextStegoMethod.ZERO_WIDTH,
+    val isStegoEncryptionEnabled: Boolean = true,
+
+    // Global State
     val selectedMode: SigilMode = SigilMode.AUTO,
     val currentScreen: AppScreen = AppScreen.HOME,
     val logs: List<String> = emptyList(),

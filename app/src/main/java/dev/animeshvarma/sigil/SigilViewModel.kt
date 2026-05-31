@@ -25,7 +25,9 @@ import dev.animeshvarma.sigil.model.LockMode
 import dev.animeshvarma.sigil.model.LockType
 import dev.animeshvarma.sigil.model.ProfileRegistry
 import dev.animeshvarma.sigil.model.SigilMode
+import dev.animeshvarma.sigil.model.TextStegoMethod
 import dev.animeshvarma.sigil.model.UiState
+import dev.animeshvarma.sigil.stego.SteganographyEngine
 import dev.animeshvarma.sigil.util.SecureMemory
 import dev.animeshvarma.sigil.util.SigilPreferences
 import kotlinx.coroutines.Dispatchers
@@ -88,7 +90,6 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
      * Loads custom profiles from preferences, combines them with built-in profiles, selects the active profile
      * (falling back to the default if the saved id is missing), and updates the UI state with the available and active profiles.
      */
-
     private fun loadProfiles() {
         val customProfiles = prefs.getCustomProfiles()
         val allProfiles = ProfileRegistry.builtInProfiles + customProfiles
@@ -329,6 +330,167 @@ class SigilViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun refreshVault() {
         _vaultEntries.value = repository.getEntries()
+    }
+
+    // --- STEGANOGRAPHY HANDLERS ---
+    fun setStegoMethod(method: TextStegoMethod) {
+        _uiState.update { it.copy(selectedStegoMethod = method) }
+        addLog("Steganography Method: ${method.title}")
+    }
+
+    fun toggleStegoEncryption(enabled: Boolean) {
+        _uiState.update { it.copy(isStegoEncryptionEnabled = enabled) }
+        if (enabled) addLog("Steganography Encryption layer Enabled.")
+    }
+
+    fun onStegoCoverTextChanged(text: String) {
+        _uiState.update { it.copy(stegoCoverText = text) }
+    }
+
+    fun onStegoSecretTextChanged(text: String) {
+        _uiState.update { it.copy(stegoSecretText = text) }
+    }
+
+    fun onStegoPasswordChanged(password: String) {
+        _uiState.update { it.copy(stegoPassword = password) }
+    }
+
+    fun onEncodeSteganography() {
+        val state = _uiState.value
+        val cover = state.stegoCoverText.trim()
+        val secret = state.stegoSecretText.trim()
+        val password = state.stegoPassword
+        val method = state.selectedStegoMethod
+        val useEncryption = state.isStegoEncryptionEnabled
+
+        if (secret.isEmpty()) {
+            addLog("Error: Cannot encode empty secret.")
+            return
+        }
+        if (useEncryption && password.isEmpty()) {
+            addLog("Error: Encryption enabled, but no password provided.")
+            return
+        }
+        if (method == TextStegoMethod.WHITESPACE_PLACEHOLDER || method == TextStegoMethod.SYNONYM_LLM_PLACEHOLDER) {
+            addLog("Error: Selected method is not yet implemented.")
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, stegoPassword = "") }
+        addLog("Steganography Encoding process started.")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val pwdChars = password.toCharArray()
+            try {
+                var payloadToHide = secret
+
+                if (useEncryption) {
+                    addLog("Encrypting payload prior to hiding (Profile: ${state.activeProfile.name}).")
+                    val kdfConfig = getActiveKdfConfig()
+
+                    if (state.activeProfile.isRaw) {
+                        val algo = state.activeProfile.layers.firstOrNull() ?: CryptoEngine.Algorithm.AES_GCM
+                        payloadToHide = CryptoEngine.encryptRaw(
+                            data = secret.toByteArray(StandardCharsets.UTF_8),
+                            password = pwdChars,
+                            algorithm = algo,
+                            kdfConfig = kdfConfig,
+                            logCallback = { addLog(it) }
+                        )
+                    } else {
+                        payloadToHide = CryptoEngine.encrypt(
+                            data = secret.toByteArray(StandardCharsets.UTF_8),
+                            password = pwdChars,
+                            algorithms = state.activeProfile.layers,
+                            kdfConfig = kdfConfig,
+                            compress = state.activeProfile.isCompressionEnabled,
+                            logCallback = { addLog(it) }
+                        )
+                    }
+
+                    payloadToHide = payloadToHide.replace(Regex("[^A-Za-z0-9+/=]"), "")
+                }
+
+                val result = SteganographyEngine.encode(cover, payloadToHide.trim(), method)
+                addLog("Payload successfully embedded using ${method.title}.")
+
+                _uiState.update { it.copy(stegoOutput = result, isLoading = false) }
+
+            } catch (e: Exception) {
+                addLog("Error: Steganography failed - ${e.javaClass.simpleName}: ${e.message}")
+                _uiState.update { it.copy(isLoading = false) }
+            } finally {
+                SecureMemory.wipe(pwdChars)
+            }
+        }
+    }
+
+    fun onDecodeSteganography() {
+        val state = _uiState.value
+        val cover = state.stegoCoverText.trim()
+        val password = state.stegoPassword
+        val method = state.selectedStegoMethod
+        val useEncryption = state.isStegoEncryptionEnabled
+
+        if (cover.isEmpty()) {
+            addLog("Error: No cover text provided for decoding.")
+            return
+        }
+        if (useEncryption && password.isEmpty()) {
+            addLog("Error: Decryption enabled, but no password provided.")
+            return
+        }
+
+        _uiState.update { it.copy(isLoading = true, stegoPassword = "") }
+        addLog("Steganography Decoding process started.")
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val pwdChars = password.toCharArray()
+            try {
+                val extractedPayload = SteganographyEngine.decode(cover, method).trim()
+                addLog("Payload extracted. Length: ${extractedPayload.length} chars.")
+
+                var finalOutput = extractedPayload
+
+                if (useEncryption) {
+                    addLog("Decrypting extracted payload.")
+                    val kdfConfig = getActiveKdfConfig()
+                    val decryptedBytes: ByteArray
+
+                    val cleanBase64 = extractedPayload.replace(Regex("[^A-Za-z0-9+/=]"), "")
+
+                    if (state.activeProfile.isRaw) {
+                        val algo = state.activeProfile.layers.firstOrNull() ?: CryptoEngine.Algorithm.AES_GCM
+                        decryptedBytes = CryptoEngine.decryptRaw(
+                            encryptedData = cleanBase64,
+                            password = pwdChars,
+                            algorithm = algo,
+                            kdfConfig = kdfConfig,
+                            logCallback = { addLog(it) }
+                        )
+                    } else {
+                        decryptedBytes = CryptoEngine.decrypt(
+                            encryptedData = cleanBase64,
+                            password = pwdChars,
+                            kdfConfig = kdfConfig,
+                            logCallback = { addLog(it) }
+                        )
+                    }
+
+                    finalOutput = String(decryptedBytes, StandardCharsets.UTF_8)
+                    SecureMemory.wipe(decryptedBytes)
+                    addLog("Decryption successful.")
+                }
+
+                _uiState.update { it.copy(stegoOutput = finalOutput.trim(), isLoading = false) }
+
+            } catch (e: Exception) {
+                addLog("Error: Decoding Failed - ${e.message}")
+                _uiState.update { it.copy(stegoOutput = "Decoding Failed. Ensure correct method, password, and profile are selected.", isLoading = false) }
+            } finally {
+                SecureMemory.wipe(pwdChars)
+            }
+        }
     }
 
     // --- INPUT HANDLERS ---

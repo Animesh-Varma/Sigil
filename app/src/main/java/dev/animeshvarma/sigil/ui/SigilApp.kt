@@ -134,7 +134,7 @@ fun SigilApp(
                         when (target) {
                             AppScreen.HOME -> HomeContent(viewModel, uiState)
                             AppScreen.DOCS -> DocsScreen()
-                            AppScreen.STEGANOGRAPHY -> SteganographyScreen()
+                            AppScreen.STEGANOGRAPHY -> SteganographyScreen(viewModel, uiState)
                             AppScreen.KEYSTORE -> KeystoreScreen(viewModel)
                             AppScreen.SETTINGS -> SettingsScreen(viewModel)
                             AppScreen.HEADERLESS,
