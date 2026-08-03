@@ -1,15 +1,15 @@
 # SIGIL
 **Open-source zero-trust cryptography & privacy suite with multi-layer encryption**
 
-> [!NOTE]  
-> **Development is Back & Active!**
+> [!NOTE]
+> **Development Status & v0.5.0 Roadmap Update**
 > 
-> Sigil is officially back in active development! Accelerated by a recent **Emergent Ventures Grant**, development has resumed with incredible momentum as we head towards the massive **v0.5.0 Steganography** update.
+> Following initial dev pushes (~3 months ago on `dev`, stable v0.4.5 on `master`), active development is currently on hold while I focus on my Class 12 Boards & SAT prep. **Active development resumes shortly after August 21, 2026**, targeting the major v0.5.0 release in Fall 2026 (Late September / October).
 > 
-> **What's Next:**
-> * **v0.5.0 (Android):** Expect rapid shipping of features and fixes on the `dev` branch. Track progress on the [v0.5.0 Roadmap](https://github.com/users/Animesh-Varma/projects/2).
-> * **Native iOS Port:** Coming soon in a dedicated repository (`Sigil-iOS`). The `v0.1.0` iOS release will closely follow the launch of Android `v0.5.0`.
-> * **Alpha Testing:** Want early access to bleeding-edge v0.5.0 builds? Email `sigil@animeshvarma.dev` to receive early signed Alpha APKs!
+> **What's Coming:**
+> * **v0.5.0 (Android):** Massive Steganography suite, authenticated AEAD cryptography upgrade, custom screen shielding, overhauled onboarding and security, along with quality-of-life improvements. Track progress on the [v0.5.0 Project Roadmap](https://github.com/users/Animesh-Varma/projects/2).
+> * **Native iOS Port (`Sigil-iOS`):** The initial `v0.1.0` iOS release will launch shortly after Android `v0.5.0`.
+> * **Bleeding-Edge Dev Builds:** Signed development APKs are automatically compiled via GitHub Actions. You can download the latest build anytime from the [Actions Runs Tab](https://github.com/Animesh-Varma/Sigil/actions) under **Artifacts**, or email `sigil@animeshvarma.dev` for testing feedback!
 
 [![Version](https://img.shields.io/badge/Version-v0.4.5-blue?style=flat-square&logo=android)](https://github.com/Animesh-Varma/Sigil/releases)
 [![License](https://img.shields.io/github/license/Animesh-Varma/Sigil?style=flat-square&color=green)](https://github.com/Animesh-Varma/Sigil/blob/master/LICENSE)
